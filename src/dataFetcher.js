@@ -1,0 +1,278 @@
+const https = require('https');
+const Papa = require('papaparse');
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
+class GoogleSheetsDataFetcher {
+    constructor(sheetId) {
+        this.sheetId = sheetId;
+        // Try alternative URL format that works better for public sheets
+        this.csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
+    }
+
+    async fetchData() {
+        try {
+            console.log('🔗 Intentando conectar a:', this.csvUrl);
+            const csvData = await this.fetchCSV();
+            const parsedData = this.parseCSV(csvData);
+            const salesData = this.processSalesData(parsedData);
+            return salesData;
+        } catch (error) {
+            console.error('Error obteniendo datos:', error);
+            throw error;
+        }
+    }
+
+    async fetchCSV() {
+        try {
+            const response = await fetch(this.csvUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+                },
+                redirect: 'follow' // Importante: seguir redirecciones
+            });
+            
+            console.log('📡 Respuesta de Google Sheets:', response.status, response.headers.get('content-type'));
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.text();
+            console.log('📄 Primeros 200 caracteres de la respuesta:', data.substring(0, 200));
+            
+            return data;
+        } catch (error) {
+            console.error('😱 Error en fetchCSV:', error);
+            throw error;
+        }
+    }
+
+    parseCSV(csvData) {
+        console.log('🔍 Parseando CSV con PapaParse...');
+        
+        // Use PapaParse to handle complex CSV with quoted fields and line breaks
+        const parsed = Papa.parse(csvData, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: (header) => header.trim()
+        });
+        
+        if (parsed.errors.length > 0) {
+            console.log('⚠️ Errores de CSV:', parsed.errors.slice(0, 3));
+        }
+        
+        console.log('📋 Headers encontrados:', Object.keys(parsed.data[0] || {}));
+        console.log('📋 Total filas parseadas:', parsed.data.length);
+        
+        // Log some sample rows to understand structure
+        if (parsed.data.length > 90) {
+            console.log('🔍 Fila 90 completa:', parsed.data[89]);
+            console.log('🔍 Fila 91 completa:', parsed.data[90]);
+        }
+        
+        return parsed.data;
+    }
+
+    parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        result.push(current.trim());
+        return result;
+    }
+
+    processSalesData(rawData) {
+        const sales = [];
+        
+        console.log('🔍 Processing', rawData.length, 'rows from Google Sheets');
+        
+        // Filter only rows from index 89+ (row 90+) and process them
+        rawData.forEach((row, index) => {
+            if (index >= 89) { // Starting from row 90
+                // Look for actual data in the row
+                const hasData = Object.values(row).some(value => value && value.toString().trim());
+                
+                if (hasData) {
+                    console.log(`Processing row ${index + 1}:`, row);
+                    
+                    // Try to extract sale info directly from the columns
+                    const sale = this.extractSaleFromColumns(row, index + 1);
+                    if (sale) {
+                        sales.push(sale);
+                        console.log('✨ Parsed sale:', sale);
+                    }
+                }
+            }
+        });
+        
+        console.log('🏆 Total sales found:', sales.length);
+        return sales;
+    }
+
+    // Extract sales using the correct column mapping from your sheet
+    extractSaleFromColumns(row, rowNumber) {
+        try {
+            // Map the actual columns from your sheet:
+            // timestamp_slack, raw_message, booking_id, actividad, fecha_venta, status, monto, Moneda, Peso, operador, nacionalidad, tipo_cambio, monto_clp
+            
+            const date = row.fecha_venta ? new Date(row.fecha_venta) : null;
+            const product = row.actividad || 'Servicio de Tour';
+            const amount = parseFloat(row.monto_clp) || 0; // Use monto_clp (already in CLP)
+            const currency = 'CLP'; // Always CLP since monto_clp is in pesos
+            const operator = row.operador || 'Unknown';
+            const nationality = row.nacionalidad || 'XX';
+            const bookingId = row.booking_id;
+            const status = row.status;
+            
+            // Extract client name from raw_message if available
+            let client = 'Unknown';
+            if (row.raw_message) {
+                const clientMatch = row.raw_message.match(/Cliente:\s*([^\n\r]+)/);
+                if (clientMatch) {
+                    client = clientMatch[1].trim();
+                }
+            }
+            
+            // Only process rows from 90+ that have the minimum required data
+            if (rowNumber >= 90 && amount > 0 && product && date) {
+                
+                // Check if this sale is from today (Chilean timezone)
+                const today = this.getTodayChile();
+                const saleDate = date.toISOString().split('T')[0];
+                
+                if (saleDate === today) {
+                    console.log(`✅ VENTA DE HOY - Fila ${rowNumber}:`, {
+                        fecha: saleDate,
+                        producto: product,
+                        monto: `$${amount.toLocaleString()} CLP`,
+                        operador: operator,
+                        cliente: client,
+                        nacionalidad: nationality,
+                        booking_id: bookingId
+                    });
+                    
+                    return {
+                        id: bookingId || `sale-${rowNumber}-${Date.now()}`,
+                        product,
+                        date: date.toISOString(),
+                        amount,
+                        currency,
+                        operator,
+                        client,
+                        nationality,
+                        timestamp: date.getTime()
+                    };
+                }
+            }
+            
+            return null;
+        } catch (error) {
+            console.error(`Error parseando fila ${rowNumber}:`, error);
+            return null;
+        }
+    }
+    
+    // Get today's date in Chilean timezone
+    getTodayChile() {
+        const now = new Date();
+        const chileTime = new Date(now.getTime() - (3 * 60 * 60 * 1000)); // UTC-3
+        return chileTime.toISOString().split('T')[0];
+    }
+    
+    // Helper method to detect date strings
+    isDateString(value) {
+        if (!value) return false;
+        const dateStr = value.toString().trim();
+        
+        // Check for common date formats
+        const datePatterns = [
+            /^\d{4}-\d{2}-\d{2}/, // 2024-03-17
+            /^\d{2}\/\d{2}\/\d{4}/, // 17/03/2024
+            /^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}/, // Tue Mar 17
+            /^\d{1,2}\/\d{1,2}\/\d{4}/ // 3/17/2024
+        ];
+        
+        return datePatterns.some(pattern => pattern.test(dateStr)) && !isNaN(Date.parse(dateStr));
+    }
+
+    // Keep original method for backward compatibility
+    extractSaleInfo(message) {
+        try {
+            // Extract booking ID
+            const idMatch = message.match(/id:\s*([a-f0-9-]+)/);
+            const id = idMatch ? idMatch[1] : null;
+
+            // Extract product name
+            const productMatch = message.match(/para\s*`([^`]+)`/);
+            const product = productMatch ? productMatch[1] : null;
+
+            // Extract date
+            const dateMatch = message.match(/Date:\s*`([^`]+)`/);
+            const date = dateMatch ? new Date(dateMatch[1]) : null;
+
+            // Extract amount and currency
+            const amountMatch = message.match(/Monto:\s*([0-9,]+\.\d+)\s*([A-Z]+)/);
+            const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : null;
+            const currency = amountMatch ? amountMatch[2] : null;
+
+            // Extract operator
+            const operatorMatch = message.match(/Operador:\s*([^\\n]+)/);
+            const operator = operatorMatch ? operatorMatch[1].trim() : null;
+
+            // Extract client
+            const clientMatch = message.match(/Cliente:\s*([^\\n]+)/);
+            const client = clientMatch ? clientMatch[1].trim() : null;
+
+            // Extract nationality
+            const nationalityMatch = message.match(/Nacionalidad:\s*([A-Z]{2})/);
+            const nationality = nationalityMatch ? nationalityMatch[1] : null;
+
+            if (id && product && date && amount && currency) {
+                return {
+                    id,
+                    product,
+                    date: date.toISOString(),
+                    amount,
+                    currency,
+                    operator,
+                    client,
+                    nationality,
+                    timestamp: date.getTime()
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error parsing sale info:', error);
+            return null;
+        }
+    }
+
+    // Convert all amounts to USD for unified calculations
+    convertToUSD(amount, currency) {
+        const exchangeRates = {
+            'CLP': 0.001, // 1 CLP = 0.001 USD (approximate)
+            'USD': 1,
+            'ARS': 0.001, // 1 ARS = 0.001 USD (approximate)
+            'BRL': 0.2    // 1 BRL = 0.2 USD (approximate)
+        };
+
+        return amount * (exchangeRates[currency] || 1);
+    }
+}
+
+module.exports = GoogleSheetsDataFetcher;
