@@ -1,0 +1,8 @@
+<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- "tur" text -->
+  <text x="0" y="32" font-family="Inter, Arial, sans-serif" font-weight="900" font-size="32" fill="#1a1a2e" letter-spacing="-1">tur</text>
+  <!-- ".COM" badge -->
+  <rect x="62" y="14" width="56" height="24" rx="12" fill="#F5A623"/>
+  <circle cx="72" cy="26" r="3" fill="#1a1a2e"/>
+  <text x="78" y="31" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="16" fill="#1a1a2e">COM</text>
+</svg>
