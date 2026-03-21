@@ -73,16 +73,20 @@ async function calculateAnalytics(salesData) {
     // Average sale value (only today)
     const avgSaleToday = todayCount > 0 ? todayTotal / todayCount : 0;
 
-    // Top products today
-    const productCounts = {};
+    // Top products today (with revenue)
+    const productStats = {};
     todaySales.forEach(sale => {
-        productCounts[sale.product] = (productCounts[sale.product] || 0) + 1;
+        if (!productStats[sale.product]) {
+            productStats[sale.product] = { count: 0, revenue: 0 };
+        }
+        productStats[sale.product].count++;
+        productStats[sale.product].revenue += sale.amount;
     });
 
-    const topProducts = Object.entries(productCounts)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 5)
-        .map(([product, count]) => ({ product, count }));
+    const topProducts = Object.entries(productStats)
+        .sort(([,a], [,b]) => b.count - a.count)
+        .slice(0, 10)
+        .map(([product, stats]) => ({ product, count: stats.count, revenue: Math.round(stats.revenue) }));
 
     // Sales by hour (today)
     const salesByHour = Array(24).fill(0);
@@ -96,6 +100,21 @@ async function calculateAnalytics(salesData) {
     todaySales.forEach(sale => {
         salesByCurrency[sale.currency] = (salesByCurrency[sale.currency] || 0) + sale.amount;
     });
+
+    // Sales by nationality/country
+    const nationalityStats = {};
+    todaySales.forEach(sale => {
+        const nat = sale.nationality || 'XX';
+        if (!nationalityStats[nat]) {
+            nationalityStats[nat] = { count: 0, revenue: 0 };
+        }
+        nationalityStats[nat].count++;
+        nationalityStats[nat].revenue += sale.amount;
+    });
+
+    const salesByNationality = Object.entries(nationalityStats)
+        .sort(([,a], [,b]) => b.count - a.count)
+        .map(([country, stats]) => ({ country, count: stats.count, revenue: Math.round(stats.revenue) }));
 
     // Top operators (revenue in CLP)
     const operatorRevenue = {};
@@ -118,8 +137,9 @@ async function calculateAnalytics(salesData) {
         salesByHour,
         salesByCurrency,
         topOperators,
-        salesByCountry, // New: for map visualization
-        recentSales: salesData.slice(-10).reverse(), // Last 10 sales
+        salesByCountry,
+        salesByNationality,
+        recentSales: salesData.slice(-10).reverse(),
         records: historicalData.records, // New: historical records
         lastBestDay: historicalData.records.daily_sales || null, // New: best sales day
         lastUpdate: lastUpdateTime

@@ -1,6 +1,6 @@
 const socket = io();
 
-let charts = { salesByHour: null, topProducts: null, currency: null, operators: null };
+let charts = { salesByHour: null, operators: null };
 
 const el = {
     status: document.getElementById('statusText'),
@@ -76,9 +76,9 @@ function updateDashboard(data) {
     }
 
     updateSalesByHourChart(analytics.salesByHour);
-    updateTopProductsChart(analytics.topProducts.slice(0, 5));
-    updateCurrencyChart(analytics.salesByCurrency);
     updateOperatorsChart(analytics.topOperators);
+    updateTopProductsTable(analytics.topProducts);
+    updateCountryTable(analytics.salesByNationality || []);
     updateRecentSales(analytics.recentSales);
 
     if (analytics.lastUpdate) {
@@ -117,58 +117,56 @@ function updateSalesByHourChart(data) {
     });
 }
 
-function updateTopProductsChart(data) {
-    const ctx = document.getElementById('topProductsChart').getContext('2d');
-    if (charts.topProducts) charts.topProducts.destroy();
+function updateTopProductsTable(data) {
+    const container = document.getElementById('topProductsTable');
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:24px">Sin productos</p>';
+        return;
+    }
 
-    const labels = data.map(item => item.product.length > 30 ? item.product.substring(0, 30) + '...' : item.product);
+    let html = `<table class="sales-table">
+        <thead><tr>
+            <th>Producto</th>
+            <th style="text-align:right">Transacciones</th>
+            <th style="text-align:right">Ingresos (CLP)</th>
+        </tr></thead><tbody>`;
 
-    charts.topProducts = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data.map(item => item.count),
-                backgroundColor: chartPalette,
-                borderWidth: 0,
-                borderRadius: 4
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: colors.grey200 } },
-                y: { grid: { display: false } }
-            }
-        }
+    data.forEach(item => {
+        html += `<tr>
+            <td>${item.product}</td>
+            <td class="amount">${item.count}</td>
+            <td class="amount">$${item.revenue.toLocaleString()}</td>
+        </tr>`;
     });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
-function updateCurrencyChart(data) {
-    const ctx = document.getElementById('currencyChart').getContext('2d');
-    if (charts.currency) charts.currency.destroy();
+function updateCountryTable(data) {
+    const container = document.getElementById('salesByCountryTable');
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:24px">Sin datos</p>';
+        return;
+    }
 
-    charts.currency = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(data),
-            datasets: [{ data: Object.values(data), backgroundColor: chartPalette, borderWidth: 0 }]
-        },
-        options: {
-            responsive: true,
-            cutout: '65%',
-            plugins: {
-                legend: { position: 'bottom' },
-                tooltip: {
-                    callbacks: {
-                        label: ctx => `${ctx.label}: $${ctx.parsed.toLocaleString()}`
-                    }
-                }
-            }
-        }
+    let html = `<table class="sales-table">
+        <thead><tr>
+            <th>País</th>
+            <th style="text-align:right">Transacciones</th>
+            <th style="text-align:right">Ingresos (CLP)</th>
+        </tr></thead><tbody>`;
+
+    data.forEach(item => {
+        html += `<tr>
+            <td><span class="nationality">${item.country}</span></td>
+            <td class="amount">${item.count}</td>
+            <td class="amount">$${item.revenue.toLocaleString()}</td>
+        </tr>`;
     });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
 function updateOperatorsChart(data) {
