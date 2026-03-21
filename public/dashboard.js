@@ -1,21 +1,12 @@
-// Initialize Socket.IO connection
 const socket = io();
 
-// Chart instances
-let charts = {
-    salesByHour: null,
-    topProducts: null,
-    currency: null,
-    operators: null
-};
+let charts = { salesByHour: null, topProducts: null, currency: null, operators: null };
 
-// Elements
-const elements = {
+const el = {
     status: document.getElementById('statusText'),
     loading: document.getElementById('loading'),
     dashboard: document.getElementById('dashboard'),
     todaySales: document.getElementById('todaySales'),
-    todayRevenue: document.getElementById('todayRevenue'),
     totalSales: document.getElementById('totalSales'),
     recordSales: document.getElementById('recordSales'),
     recordDate: document.getElementById('recordDate'),
@@ -26,233 +17,153 @@ const elements = {
     notificationText: document.getElementById('notificationText')
 };
 
-// Connection status
+// Evidence color palette
+const colors = {
+    blue: '#3b82f6',
+    green: '#22c55e',
+    yellow: '#eab308',
+    red: '#ef4444',
+    purple: '#8b5cf6',
+    grey200: '#e5e7eb',
+    grey400: '#9ca3af',
+    grey700: '#374151',
+    grey900: '#111827'
+};
+
+const chartPalette = [colors.blue, colors.green, colors.yellow, colors.red, colors.purple];
+
+// Chart.js global defaults (Evidence style)
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = colors.grey400;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding = 16;
+
+// Socket events
 socket.on('connect', () => {
-    elements.status.textContent = '🟢 Conectado en tiempo real';
-    document.getElementById('status').className = 'status online';
+    el.status.textContent = '● En vivo';
+    document.getElementById('status').className = 'header-status online';
 });
 
 socket.on('disconnect', () => {
-    elements.status.textContent = '🔴 Desconectado';
-    document.getElementById('status').className = 'status offline';
+    el.status.textContent = '● Desconectado';
+    document.getElementById('status').className = 'header-status offline';
 });
 
-// Sales data updates
 socket.on('salesUpdate', (data) => {
     updateDashboard(data);
-    
-    if (data.newSalesCount > 0) {
-        showNotification(`🎉 ${data.newSalesCount} nueva(s) venta(s)!`);
-    }
+    if (data.newSalesCount > 0) showNotification(`${data.newSalesCount} nueva(s) venta(s)`);
 });
 
-// New day event
-socket.on('newDay', (data) => {
-    showNotification('🌅 ¡Nuevo día! Dashboard reiniciado.');
-    
-    // Reset dashboard
-    elements.todaySales.textContent = '0';
-    elements.todayRevenue.textContent = '$0 CLP';
-    elements.totalSales.textContent = '$0';
-    elements.countriesCount.textContent = '0';
-    
-    console.log('New day started:', data);
+socket.on('newDay', () => {
+    el.todaySales.textContent = '0';
+    el.totalSales.textContent = '$0';
+    el.countriesCount.textContent = '0';
 });
 
-// Update dashboard with new data
 function updateDashboard(data) {
     const { analytics } = data;
-    
-    // Hide loading and show dashboard
-    elements.loading.style.display = 'none';
-    elements.dashboard.style.display = 'block';
-    
-    // Update daily metrics (showing CLP)
-    elements.todaySales.textContent = analytics.today.sales;
-    elements.todayRevenue.textContent = `$${analytics.today.revenue.toLocaleString()} CLP`;
-    elements.totalSales.textContent = `$${analytics.today.revenue.toLocaleString()}`;
-    
-    // Update records
+    el.loading.style.display = 'none';
+    el.dashboard.style.display = 'block';
+
+    el.todaySales.textContent = analytics.today.sales;
+    el.totalSales.textContent = '$' + analytics.today.revenue.toLocaleString();
+    el.countriesCount.textContent = analytics.salesByCountry ? analytics.salesByCountry.length : 0;
+
     if (analytics.records && analytics.records.daily_sales) {
-        elements.recordSales.textContent = analytics.records.daily_sales.record_value;
-        elements.recordDate.textContent = new Date(analytics.records.daily_sales.record_date).toLocaleDateString();
+        el.recordSales.textContent = analytics.records.daily_sales.record_value;
+        el.recordDate.textContent = new Date(analytics.records.daily_sales.record_date).toLocaleDateString();
     }
-    
-    // Update countries count
-    elements.countriesCount.textContent = analytics.salesByCountry ? analytics.salesByCountry.length : 0;
-    
-    // Update charts
+
     updateSalesByHourChart(analytics.salesByHour);
-    updateTopProductsChart(analytics.topProducts.slice(0, 5)); // Top 5 only
+    updateTopProductsChart(analytics.topProducts.slice(0, 5));
     updateCurrencyChart(analytics.salesByCurrency);
     updateOperatorsChart(analytics.topOperators);
-    
-    // Update recent sales
     updateRecentSales(analytics.recentSales);
-    
-    // Update last update time
+
     if (analytics.lastUpdate) {
-        const updateTime = new Date(analytics.lastUpdate);
-        elements.lastUpdate.textContent = `Última actualización: ${updateTime.toLocaleTimeString()}`;
+        el.lastUpdate.textContent = 'Última actualización: ' + new Date(analytics.lastUpdate).toLocaleTimeString();
     }
 }
 
-// Chart configurations for dark theme
-const chartColors = {
-    primary: '#667eea',
-    secondary: '#764ba2', 
-    accent: '#f093fb',
-    success: '#22c55e',
-    warning: '#f59e0b',
-    background: 'rgba(102, 126, 234, 0.1)',
-    grid: 'rgba(255, 255, 255, 0.1)',
-    text: 'rgba(255, 255, 255, 0.8)'
-};
-
-
-// Sales by hour chart
 function updateSalesByHourChart(data) {
     const ctx = document.getElementById('salesByHourChart').getContext('2d');
-    
-    if (charts.salesByHour) {
-        charts.salesByHour.destroy();
-    }
-    
-    const labels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-    
+    if (charts.salesByHour) charts.salesByHour.destroy();
+
     charts.salesByHour = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labels,
+            labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
             datasets: [{
                 label: 'Ventas',
                 data: data,
-                borderColor: chartColors.primary,
-                backgroundColor: chartColors.background,
+                borderColor: colors.blue,
+                backgroundColor: colors.blue + '15',
                 borderWidth: 2,
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 4
             }]
         },
         options: {
             responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: {
-                    ticks: {
-                        color: chartColors.text
-                    },
-                    grid: {
-                        color: chartColors.grid
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1,
-                        color: chartColors.text
-                    },
-                    grid: {
-                        color: chartColors.grid
-                    }
-                }
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: colors.grey200 } }
             }
         }
     });
 }
 
-// Top products chart
 function updateTopProductsChart(data) {
     const ctx = document.getElementById('topProductsChart').getContext('2d');
-    
-    if (charts.topProducts) {
-        charts.topProducts.destroy();
-    }
-    
-    const labels = data.map(item => {
-        const product = item.product;
-        return product.length > 30 ? product.substring(0, 30) + '...' : product;
-    });
-    const values = data.map(item => item.count);
-    
+    if (charts.topProducts) charts.topProducts.destroy();
+
+    const labels = data.map(item => item.product.length > 30 ? item.product.substring(0, 30) + '...' : item.product);
+
     charts.topProducts = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'bar',
         data: {
             labels: labels,
             datasets: [{
-                data: values,
-                backgroundColor: [
-                    chartColors.primary,
-                    chartColors.secondary,
-                    chartColors.accent,
-                    chartColors.success,
-                    chartColors.warning
-                ]
+                data: data.map(item => item.count),
+                backgroundColor: chartPalette,
+                borderWidth: 0,
+                borderRadius: 4
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true,
-                        color: chartColors.text
-                    }
-                }
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: colors.grey200 } },
+                y: { grid: { display: false } }
             }
         }
     });
 }
 
-// Currency distribution chart
 function updateCurrencyChart(data) {
     const ctx = document.getElementById('currencyChart').getContext('2d');
-    
-    if (charts.currency) {
-        charts.currency.destroy();
-    }
-    
-    const currencies = Object.keys(data);
-    const amounts = Object.values(data);
-    
+    if (charts.currency) charts.currency.destroy();
+
     charts.currency = new Chart(ctx, {
-        type: 'pie',
+        type: 'doughnut',
         data: {
-            labels: currencies,
-            datasets: [{
-                data: amounts,
-                backgroundColor: [
-                    chartColors.primary,
-                    chartColors.secondary,
-                    chartColors.accent,
-                    chartColors.success
-                ]
-            }]
+            labels: Object.keys(data),
+            datasets: [{ data: Object.values(data), backgroundColor: chartPalette, borderWidth: 0 }]
         },
         options: {
             responsive: true,
+            cutout: '65%',
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: chartColors.text,
-                        usePointStyle: true,
-                        padding: 20
-                    }
-                },
+                legend: { position: 'bottom' },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
-                            const currency = context.label;
-                            const amount = context.parsed;
-                            return `${currency}: ${amount.toLocaleString()}`;
-                        }
+                        label: ctx => `${ctx.label}: $${ctx.parsed.toLocaleString()}`
                     }
                 }
             }
@@ -260,141 +171,85 @@ function updateCurrencyChart(data) {
     });
 }
 
-// Top operators chart
 function updateOperatorsChart(data) {
     const ctx = document.getElementById('operatorsChart').getContext('2d');
-    
-    if (charts.operators) {
-        charts.operators.destroy();
-    }
-    
+    if (charts.operators) charts.operators.destroy();
+
     const labels = data.map(item => {
-        const operator = item.operator;
-        return operator && operator.length > 20 ? operator.substring(0, 20) + '...' : operator || 'N/A';
+        const op = item.operator || 'N/A';
+        return op.length > 20 ? op.substring(0, 20) + '...' : op;
     });
-    const revenues = data.map(item => item.revenue);
-    
+
     charts.operators = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Ingresos USD',
-                data: revenues,
-                backgroundColor: chartColors.primary,
-                borderColor: chartColors.primary,
-                borderWidth: 1
+                data: data.map(item => item.revenue),
+                backgroundColor: colors.blue + '80',
+                borderColor: colors.blue,
+                borderWidth: 1,
+                borderRadius: 4
             }]
         },
         options: {
+            indexAxis: 'y',
             responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
                 x: {
-                    ticks: {
-                        color: chartColors.text,
-                        maxRotation: 45
-                    },
-                    grid: {
-                        color: chartColors.grid
-                    }
-                },
-                y: {
                     beginAtZero: true,
-                    ticks: {
-                        color: chartColors.text,
-                        callback: function(value) {
-                            return '$' + value.toLocaleString() + ' CLP';
-                        }
-                    },
-                    grid: {
-                        color: chartColors.grid
-                    }
-                }
+                    grid: { color: colors.grey200 },
+                    ticks: { callback: v => '$' + v.toLocaleString() }
+                },
+                y: { grid: { display: false } }
             }
         }
     });
 }
 
-// Update recent sales list
 function updateRecentSales(sales) {
-    elements.recentSalesList.innerHTML = '';
-    
     if (!sales || sales.length === 0) {
-        elements.recentSalesList.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No hay ventas recientes</div>';
+        el.recentSalesList.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:24px">Sin ventas recientes</p>';
         return;
     }
-    
-    sales.forEach((sale, index) => {
-        const saleElement = document.createElement('div');
-        saleElement.className = 'sale-item';
-        
-        if (index < 3) { // Highlight first 3 as "new"
-            saleElement.classList.add('new-sale');
-        }
-        
-        const saleDate = new Date(sale.date);
-        const timeString = saleDate.toLocaleTimeString();
-        
-        saleElement.innerHTML = `
-            <div class="sale-info">
-                <div class="sale-product">${sale.product}</div>
-                <div class="sale-details">
-                    ${sale.client || 'Cliente'} (${sale.nationality || '--'}) • 
-                    ${sale.operator || 'Operador'} • 
-                    ${timeString}
-                </div>
-            </div>
-            <div class="sale-amount">
-                ${sale.amount.toLocaleString()} ${sale.currency}
-            </div>
-        `;
-        
-        elements.recentSalesList.appendChild(saleElement);
+
+    let html = `<table class="sales-table">
+        <thead><tr>
+            <th>Producto</th>
+            <th>Operador</th>
+            <th>Cliente</th>
+            <th>País</th>
+            <th>Hora</th>
+            <th style="text-align:right">Monto</th>
+        </tr></thead><tbody>`;
+
+    sales.forEach(sale => {
+        const time = new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        html += `<tr>
+            <td>${sale.product || '-'}</td>
+            <td>${sale.operator || '-'}</td>
+            <td>${sale.client || '-'}</td>
+            <td><span class="nationality">${sale.nationality || '-'}</span></td>
+            <td>${time}</td>
+            <td class="amount">$${sale.amount.toLocaleString()} ${sale.currency}</td>
+        </tr>`;
     });
+
+    html += '</tbody></table>';
+    el.recentSalesList.innerHTML = html;
 }
 
-// Show notification
 function showNotification(message) {
-    elements.notificationText.textContent = message;
-    elements.notification.classList.add('show');
-    
-    setTimeout(() => {
-        elements.notification.classList.remove('show');
-    }, 3000);
+    el.notificationText.textContent = message;
+    el.notification.classList.add('show');
+    setTimeout(() => el.notification.classList.remove('show'), 3000);
 }
 
-// Format currency
-function formatCurrency(amount, currency = 'USD') {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency
-    }).format(amount);
-}
-
-// Format date
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-}
-
-// Initialize dashboard
+// Init
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Dashboard initialized');
-    
-    
-    // Load initial data
     fetch('/api/sales')
-        .then(response => response.json())
-        .then(data => {
-            updateDashboard(data);
-        })
-        .catch(error => {
-            console.error('Error loading initial data:', error);
-            elements.loading.innerHTML = 'Error cargando datos. Reintentando...';
-        });
+        .then(r => r.json())
+        .then(data => updateDashboard(data))
+        .catch(() => { el.loading.textContent = 'Error cargando datos...'; });
 });

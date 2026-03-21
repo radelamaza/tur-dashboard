@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const cors = require('cors');
+const fs = require('fs');
 require('dotenv').config();
 
 const GoogleSheetsDataFetcher = require('./dataFetcher');
@@ -165,6 +166,9 @@ async function updateSalesData() {
         
         console.log(`Updated: ${todayData.length} today's sales, ${Math.max(0, newSalesCount - previousCount)} new sales`);
         
+        // Export to CSV for Evidence dashboard
+        exportToCSV(currentSalesData);
+        
         // Check for end of day
         if (sheetCleaner.isEndOfDay()) {
             await handleEndOfDay();
@@ -172,6 +176,29 @@ async function updateSalesData() {
         
     } catch (error) {
         console.error('Error updating sales data:', error);
+    }
+}
+
+// Exportar ventas a CSV para Evidence
+function exportToCSV(sales) {
+    try {
+        const headers = 'id,product,date,amount,currency,operator,client,nationality\n';
+        const rows = sales.map(s => [
+            s.id,
+            `"${(s.product || '').replace(/"/g, '""')}"`,
+            s.date,
+            s.amount,
+            s.currency,
+            `"${(s.operator || '').replace(/"/g, '""')}"`,
+            `"${(s.client || '').replace(/"/g, '""')}"`,
+            s.nationality
+        ].join(',')).join('\n');
+        
+        const csvPath = path.join(__dirname, '../public/sales.csv');
+        fs.writeFileSync(csvPath, headers + rows, 'utf8');
+        console.log(`📄 CSV exportado: ${sales.length} ventas → public/sales.csv`);
+    } catch (error) {
+        console.error('Error exportando CSV:', error);
     }
 }
 

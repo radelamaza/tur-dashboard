@@ -3,455 +3,312 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tur.com - Dashboard de Ventas en Tiempo Real</title>
+    <title>Tur.com</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --green-500: #22c55e;
+            --green-600: #16a34a;
+            --grey-50: #f9fafb;
+            --grey-100: #f3f4f6;
+            --grey-200: #e5e7eb;
+            --grey-300: #d1d5db;
+            --grey-400: #9ca3af;
+            --grey-500: #6b7280;
+            --grey-600: #4b5563;
+            --grey-700: #374151;
+            --grey-800: #1f2937;
+            --grey-900: #111827;
+            --red-500: #ef4444;
+            --yellow-500: #eab308;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #0a0b0d;
-            color: #ffffff;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* Animated background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 80%, #120a2b 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, #1a1b3f 0%, transparent 50%),
-                        radial-gradient(circle at 40% 40%, #0d1428 0%, transparent 50%);
-            z-index: -1;
-        }
-
-        .container {
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 20px;
+            background: var(--grey-50);
+            color: var(--grey-900);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
         }
 
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            position: relative;
-        }
-
-        .header h1 {
-            font-size: 3.2rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header .subtitle {
-            font-size: 1.1rem;
-            color: rgba(255, 255, 255, 0.7);
-            font-weight: 400;
-        }
-
-        .status {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            display: inline-block;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .status.online {
-            background: rgba(34, 197, 94, 0.1);
-            color: #22c55e;
-            border-color: rgba(34, 197, 94, 0.2);
-        }
-
-        .status.offline {
-            background: rgba(239, 68, 68, 0.1);
-            color: #ef4444;
-            border-color: rgba(239, 68, 68, 0.2);
-        }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-bottom: 40px;
-        }
-
-        .metric-card {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 32px 28px;
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .metric-card::before {
-            content: '';
-            position: absolute;
+            background: white;
+            border-bottom: 1px solid var(--grey-200);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
             top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
+            z-index: 100;
         }
 
-        .metric-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.05);
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .metric-card:hover::before {
-            transform: scaleX(1);
-        }
+        .header-logo { width: 32px; height: 32px; }
 
-        .metric-value {
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .metric-label {
-            color: rgba(255, 255, 255, 0.9);
+        .header-title {
             font-size: 1.1rem;
-            font-weight: 500;
-            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--grey-900);
         }
 
-        .metric-sublabel {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 0.9rem;
-            font-weight: 400;
+        .header-status {
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .header-status.online { background: #dcfce7; color: var(--green-600); }
+        .header-status.offline { background: #fee2e2; color: var(--red-500); }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .big-values {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .big-value {
+            background: white;
+            border: 1px solid var(--grey-200);
+            border-radius: 8px;
+            padding: 20px 24px;
+        }
+
+        .big-value-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--grey-500);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .big-value-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--grey-900);
+            line-height: 1.2;
+        }
+
+        .big-value-sub {
+            font-size: 0.8rem;
+            color: var(--grey-400);
+            margin-top: 4px;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--grey-800);
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--grey-200);
         }
 
         .charts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-            gap: 28px;
-            margin-bottom: 40px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 32px;
         }
 
-        .chart-container {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 32px;
-            transition: all 0.3s ease;
-            position: relative;
+        .chart-card {
+            background: white;
+            border: 1px solid var(--grey-200);
+            border-radius: 8px;
+            padding: 24px;
         }
 
-        .chart-container:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        .chart-title {
-            font-size: 1.25rem;
+        .chart-card-title {
+            font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 20px;
-            color: rgba(255, 255, 255, 0.9);
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
+            color: var(--grey-700);
+            margin-bottom: 16px;
         }
 
-        /* Map specific styling */
-        #salesMap {
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .table-card {
+            background: white;
+            border: 1px solid var(--grey-200);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 32px;
+            overflow-x: auto;
         }
 
-        .recent-sales {
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 32px;
-            margin-top: 40px;
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
         }
 
-        .recent-sales h3 {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .sales-list {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        .sale-item {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 20px 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-
-        .sale-item:hover {
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 12px;
-            margin: 0 -12px;
-            padding: 20px 12px;
-        }
-
-        .sale-info {
-            flex: 1;
-        }
-
-        .sale-product {
-            font-weight: 600;
-            margin-bottom: 6px;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1rem;
-        }
-
-        .sale-details {
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.5);
-            line-height: 1.4;
-        }
-
-        .sale-amount {
-            font-size: 1.1rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-left: 20px;
-        }
-
-        .new-sale {
-            animation: highlight 3s ease-out;
-        }
-
-        @keyframes highlight {
-            0% { 
-                background: linear-gradient(135deg, #22c55e, #16a34a);
-                color: white;
-                transform: scale(1.02);
-            }
-            100% { 
-                background: transparent;
-                color: inherit;
-                transform: scale(1);
-            }
-        }
-
-        .last-update {
-            text-align: center;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: 40px;
-            font-size: 0.85rem;
-            font-weight: 400;
-        }
-
-        .notification {
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            background: linear-gradient(135deg, #22c55e, #16a34a);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 12px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            z-index: 1000;
-            opacity: 0;
-            transform: translateX(120%);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        .sales-table th {
+            text-align: left;
             font-weight: 500;
+            color: var(--grey-500);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--grey-200);
         }
 
-        .notification.show {
-            opacity: 1;
-            transform: translateX(0);
+        .sales-table td {
+            padding: 10px 12px;
+            color: var(--grey-700);
+            border-bottom: 1px solid var(--grey-100);
+        }
+
+        .sales-table tr:hover td { background: var(--grey-50); }
+
+        .sales-table .amount {
+            font-weight: 600;
+            color: var(--grey-900);
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .sales-table .nationality {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--grey-100);
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--grey-600);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 16px;
+            color: var(--grey-400);
+            font-size: 0.8rem;
         }
 
         .loading {
             text-align: center;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 1.2rem;
-            margin: 60px 0;
-            font-weight: 400;
+            padding: 80px 0;
+            color: var(--grey-500);
+            font-size: 0.95rem;
         }
 
-        /* Scrollbar styling */
-        .sales-list::-webkit-scrollbar {
-            width: 6px;
+        .notification {
+            position: fixed;
+            top: 64px;
+            right: 24px;
+            background: white;
+            border: 1px solid var(--green-500);
+            color: var(--green-600);
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            font-weight: 500;
         }
 
-        .sales-list::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
-        }
-
-        .sales-list::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-
-        .sales-list::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
+        .notification.show { opacity: 1; transform: translateY(0); }
 
         @media (max-width: 768px) {
-            .container {
-                padding: 16px;
-            }
-            
-            .header h1 {
-                font-size: 2.5rem;
-            }
-            
-            .charts-grid {
-                grid-template-columns: 1fr;
-                gap: 20px;
-            }
-            
-            .metrics-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
-            }
-            
-            .chart-container,
-            .metric-card {
-                padding: 24px 20px;
-            }
-            
-            .recent-sales {
-                padding: 24px 20px;
-            }
-            
-            .sale-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 8px;
-            }
-            
-            .sale-amount {
-                margin-left: 0;
-                align-self: flex-end;
-            }
+            .container { padding: 20px 16px; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .big-values { grid-template-columns: repeat(2, 1fr); }
+            .big-value-number { font-size: 1.5rem; }
+            .header { padding: 12px 16px; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px;">
-                <img src="https://www.tur.com/favicon.ico" alt="Tur.com" style="width: 40px; height: 40px;" onerror="this.style.display='none'">
-                <h1>🚀 Tur.com Dashboard</h1>
-            </div>
-            <div class="subtitle">Ventas en Tiempo Real</div>
+    <div class="header">
+        <div class="header-left">
+            <img src="https://tur.com/icons/icon-192x192.png" class="header-logo" alt="Tur.com" onerror="this.style.display='none'">
+            <span class="header-title">Tur.com</span>
         </div>
-
-        <div id="status" class="status">
+        <div id="status" class="header-status online">
             <span id="statusText">Conectando...</span>
         </div>
+    </div>
 
-        <div id="loading" class="loading">
-            Cargando datos de ventas...
-        </div>
+    <div class="container">
+        <div id="loading" class="loading">Cargando datos de ventas...</div>
 
         <div id="dashboard" style="display: none;">
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-value" id="todaySales">-</div>
-                    <div class="metric-label">Ventas Hoy</div>
-                    <div class="metric-sublabel" id="todayRevenue">$0 CLP</div>
+            <div class="big-values">
+                <div class="big-value">
+                    <div class="big-value-label">Ventas Hoy</div>
+                    <div class="big-value-number" id="todaySales">0</div>
+                    <div class="big-value-sub">transacciones</div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-value" id="totalSales">$0</div>
-                    <div class="metric-label">Total Ventas Hoy</div>
-                    <div class="metric-sublabel">CLP</div>
+                <div class="big-value">
+                    <div class="big-value-label">Total Ventas</div>
+                    <div class="big-value-number" id="totalSales">$0</div>
+                    <div class="big-value-sub">CLP</div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-value" id="recordSales">-</div>
-                    <div class="metric-label">Récord de Ventas</div>
-                    <div class="metric-sublabel" id="recordDate">Mejor día</div>
+                <div class="big-value">
+                    <div class="big-value-label">Récord</div>
+                    <div class="big-value-number" id="recordSales">-</div>
+                    <div class="big-value-sub" id="recordDate">mejor día</div>
                 </div>
-                
-                <div class="metric-card">
-                    <div class="metric-value" id="countriesCount">-</div>
-                    <div class="metric-label">Países con Ventas</div>
-                    <div class="metric-sublabel">Hoy</div>
+                <div class="big-value">
+                    <div class="big-value-label">Países</div>
+                    <div class="big-value-number" id="countriesCount">0</div>
+                    <div class="big-value-sub">con ventas hoy</div>
                 </div>
             </div>
 
             <div class="charts-grid">
-                <div class="chart-container">
-                    <div class="chart-title">📈 Ventas por Hora (Hoy)</div>
-                    <canvas id="salesByHourChart" width="400" height="200"></canvas>
+                <div class="chart-card">
+                    <div class="chart-card-title">Ventas por Hora</div>
+                    <canvas id="salesByHourChart" height="200"></canvas>
                 </div>
-                
-                <div class="chart-container">
-                    <div class="chart-title">🏆 Top 5 Productos Más Vendidos</div>
-                    <canvas id="topProductsChart" width="400" height="200"></canvas>
+                <div class="chart-card">
+                    <div class="chart-card-title">Top 5 Productos</div>
+                    <canvas id="topProductsChart" height="200"></canvas>
                 </div>
-                
-                <div class="chart-container">
-                    <div class="chart-title">💰 Ventas por Moneda</div>
-                    <canvas id="currencyChart" width="400" height="200"></canvas>
+                <div class="chart-card">
+                    <div class="chart-card-title">Ventas por Moneda</div>
+                    <canvas id="currencyChart" height="200"></canvas>
                 </div>
-                
-                <div class="chart-container">
-                    <div class="chart-title">🏢 Top Operadores (CLP)</div>
-                    <canvas id="operatorsChart" width="400" height="200"></canvas>
+                <div class="chart-card">
+                    <div class="chart-card-title">Top Operadores (CLP)</div>
+                    <canvas id="operatorsChart" height="200"></canvas>
                 </div>
             </div>
 
-            <div class="recent-sales">
-                <h3>Ventas Recientes</h3>
-                <div id="recentSalesList" class="sales-list">
-                </div>
+            <div class="table-card">
+                <div class="section-title">Últimas Ventas</div>
+                <div id="recentSalesList"></div>
             </div>
         </div>
+    </div>
 
-        <div class="last-update">
-            <span id="lastUpdate">Última actualización: -</span>
-        </div>
+    <div class="footer">
+        <span id="lastUpdate">Última actualización: -</span>
     </div>
 
     <div id="notification" class="notification">
