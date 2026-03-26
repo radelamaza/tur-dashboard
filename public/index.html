@@ -14,33 +14,31 @@
             --blue-600: #2563eb;
             --green-500: #22c55e;
             --green-600: #16a34a;
-            --grey-50: #f9fafb;
-            --grey-100: #f3f4f6;
-            --grey-200: #e5e7eb;
-            --grey-300: #d1d5db;
-            --grey-400: #9ca3af;
-            --grey-500: #6b7280;
-            --grey-600: #4b5563;
-            --grey-700: #374151;
-            --grey-800: #1f2937;
-            --grey-900: #111827;
             --red-500: #ef4444;
             --yellow-500: #eab308;
+
+            --bg: #09090b;
+            --bg-card: #18181b;
+            --bg-hover: #27272a;
+            --border: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--grey-50);
-            color: var(--grey-900);
+            background: var(--bg);
+            color: var(--text-primary);
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
         }
 
         .header {
-            background: white;
-            border-bottom: 1px solid var(--grey-200);
+            background: #0d0d10;
+            border-bottom: 1px solid var(--border);
             padding: 12px 32px;
             display: flex;
             align-items: center;
@@ -56,14 +54,6 @@
             gap: 12px;
         }
 
-        .header-logo { width: 32px; height: 32px; }
-
-        .header-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--grey-900);
-        }
-
         .header-status {
             font-size: 0.8rem;
             font-weight: 500;
@@ -74,8 +64,8 @@
             gap: 6px;
         }
 
-        .header-status.online { background: #dcfce7; color: var(--green-600); }
-        .header-status.offline { background: #fee2e2; color: var(--red-500); }
+        .header-status.online { background: rgba(34,197,94,0.15); color: var(--green-500); }
+        .header-status.offline { background: rgba(239,68,68,0.15); color: var(--red-500); }
 
         .container {
             max-width: 1200px;
@@ -91,8 +81,8 @@
         }
 
         .big-value {
-            background: white;
-            border: 1px solid var(--grey-200);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 20px 24px;
         }
@@ -100,7 +90,7 @@
         .big-value-label {
             font-size: 0.8rem;
             font-weight: 500;
-            color: var(--grey-500);
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
             margin-bottom: 4px;
@@ -109,23 +99,23 @@
         .big-value-number {
             font-size: 2rem;
             font-weight: 700;
-            color: var(--grey-900);
+            color: var(--text-primary);
             line-height: 1.2;
         }
 
         .big-value-sub {
             font-size: 0.8rem;
-            color: var(--grey-400);
+            color: var(--text-secondary);
             margin-top: 4px;
         }
 
         .section-title {
             font-size: 1.1rem;
             font-weight: 600;
-            color: var(--grey-800);
+            color: var(--text-primary);
             margin-bottom: 16px;
             padding-bottom: 8px;
-            border-bottom: 1px solid var(--grey-200);
+            border-bottom: 1px solid var(--border);
         }
 
         .charts-grid {
@@ -136,8 +126,8 @@
         }
 
         .chart-card {
-            background: white;
-            border: 1px solid var(--grey-200);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 24px;
         }
@@ -145,13 +135,13 @@
         .chart-card-title {
             font-size: 0.9rem;
             font-weight: 600;
-            color: var(--grey-700);
+            color: var(--text-secondary);
             margin-bottom: 16px;
         }
 
         .table-card {
-            background: white;
-            border: 1px solid var(--grey-200);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 24px;
             margin-bottom: 32px;
@@ -167,25 +157,25 @@
         .sales-table th {
             text-align: left;
             font-weight: 500;
-            color: var(--grey-500);
+            color: var(--text-muted);
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             padding: 8px 12px;
-            border-bottom: 1px solid var(--grey-200);
+            border-bottom: 1px solid var(--border);
         }
 
         .sales-table td {
             padding: 10px 12px;
-            color: var(--grey-700);
-            border-bottom: 1px solid var(--grey-100);
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
         }
 
-        .sales-table tr:hover td { background: var(--grey-50); }
+        .sales-table tr:hover td { background: var(--bg-hover); }
 
         .sales-table .amount {
             font-weight: 600;
-            color: var(--grey-900);
+            color: var(--text-primary);
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
@@ -194,23 +184,23 @@
             display: inline-block;
             padding: 2px 8px;
             border-radius: 4px;
-            background: var(--grey-100);
+            background: var(--bg-hover);
             font-size: 0.75rem;
             font-weight: 500;
-            color: var(--grey-600);
+            color: var(--text-secondary);
         }
 
         .footer {
             text-align: center;
             padding: 16px;
-            color: var(--grey-400);
+            color: var(--text-muted);
             font-size: 0.8rem;
         }
 
         .loading {
             text-align: center;
             padding: 80px 0;
-            color: var(--grey-500);
+            color: var(--text-secondary);
             font-size: 0.95rem;
         }
 
@@ -218,12 +208,12 @@
             position: fixed;
             top: 64px;
             right: 24px;
-            background: white;
+            background: var(--bg-card);
             border: 1px solid var(--green-500);
-            color: var(--green-600);
+            color: var(--green-500);
             padding: 12px 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
             z-index: 1000;
             opacity: 0;
             transform: translateY(-10px);
@@ -246,7 +236,7 @@
 <body>
     <div class="header">
         <div class="header-left">
-            <img src="/logo.svg" alt="Tur.com" height="32">
+            <img src="/logo.svg" alt="Tur.com" height="40">
         </div>
         <div id="status" class="header-status online">
             <span id="statusText">Conectando...</span>

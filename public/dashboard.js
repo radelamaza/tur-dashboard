@@ -17,22 +17,21 @@ const el = {
     notificationText: document.getElementById('notificationText')
 };
 
-// Evidence color palette
 const colors = {
     blue: '#3b82f6',
     green: '#22c55e',
     yellow: '#eab308',
     red: '#ef4444',
     purple: '#8b5cf6',
-    grey200: '#e5e7eb',
-    grey400: '#9ca3af',
-    grey700: '#374151',
-    grey900: '#111827'
+    grey200: '#27272a',
+    grey400: '#71717a',
+    grey700: '#a1a1aa',
+    grey900: '#fafafa'
 };
 
 const chartPalette = [colors.blue, colors.green, colors.yellow, colors.red, colors.purple];
 
-// Chart.js global defaults (Evidence style)
+// Chart.js global defaults
 Chart.defaults.font.family = "'Inter', sans-serif";
 Chart.defaults.font.size = 12;
 Chart.defaults.color = colors.grey400;
