@@ -22,6 +22,24 @@ class GoogleSheetsDataFetcher {
         }
     }
 
+    // Returns raw parsed rows from index 89+ for debugging
+    async fetchRawRows() {
+        const csvData = await this.fetchCSV(this.csvUrl);
+        const parsed = Papa.parse(csvData, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: (h) => h.trim()
+        });
+        return parsed.data.slice(89).map((row, i) => ({
+            rowNumber: 90 + i,
+            fecha: row.fecha,
+            fecha_venta: row.fecha_venta,
+            monto_clp: row.monto_clp,
+            actividad: row.actividad,
+            headers: Object.keys(row)
+        }));
+    }
+
     async fetchKpisDiarios() {
         try {
             const csvData = await this.fetchCSV(this.kpisCsvUrl);

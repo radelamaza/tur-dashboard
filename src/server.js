@@ -274,6 +274,17 @@ app.get('/api/sales', async (req, res) => {
     }
 });
 
+// Debug endpoint — shows raw sheet rows 90+ and today's filter value
+app.get('/api/debug', async (req, res) => {
+    try {
+        const rawData = await dataFetcher.fetchRawRows();
+        const today = getTodayDateStr();
+        res.json({ today, rawRows: rawData });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // New endpoint for historical records
 app.get('/api/records', async (req, res) => {
     try {
