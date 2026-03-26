@@ -160,7 +160,13 @@ class GoogleSheetsDataFetcher {
             // Map the actual columns from your sheet:
             // timestamp_slack, raw_message, booking_id, actividad, fecha_venta, status, monto, Moneda, Peso, operador, nacionalidad, tipo_cambio, monto_clp
             
-            const date = row.fecha_venta ? new Date(row.fecha_venta) : null;
+            // fecha_venta (UTC from Slack) → adjust to Chile time (UTC-3) for correct hours
+            const utcDate = row.fecha_venta ? new Date(row.fecha_venta) : null;
+            const dateChile = utcDate ? new Date(utcDate.getTime() - (3 * 60 * 60 * 1000)) : null;
+
+            // fecha column has the correct Chile date (used only for day comparison)
+            const fechaChile = (row.fecha || '').trim().split('T')[0].split(' ')[0];
+
             const product = row.actividad || 'Servicio de Tour';
             const amount = parseFloat(row.monto_clp) || 0; // Use monto_clp (already in CLP)
             const currency = 'CLP'; // Always CLP since monto_clp is in pesos
@@ -168,7 +174,7 @@ class GoogleSheetsDataFetcher {
             const nationality = row.nacionalidad || 'XX';
             const bookingId = row.booking_id;
             const status = row.status;
-            
+
             // Extract client name from raw_message if available
             let client = 'Unknown';
             if (row.raw_message) {
@@ -177,17 +183,16 @@ class GoogleSheetsDataFetcher {
                     client = clientMatch[1].trim();
                 }
             }
-            
+
             // Only process rows from 90+ that have the minimum required data
-            if (rowNumber >= 90 && amount > 0 && product && date) {
-                
-                // Check if this sale is from today (Chilean timezone)
+            if (rowNumber >= 90 && amount > 0 && product && fechaChile) {
+
+                // Check if this sale is from today using fecha (already Chile date)
                 const today = this.getTodayChile();
-                const saleDate = date.toISOString().split('T')[0];
-                
-                if (saleDate === today) {
+
+                if (fechaChile === today) {
                     console.log(`✅ VENTA DE HOY - Fila ${rowNumber}:`, {
-                        fecha: saleDate,
+                        fecha: fechaChile,
                         producto: product,
                         monto: `$${amount.toLocaleString()} CLP`,
                         operador: operator,
@@ -195,17 +200,18 @@ class GoogleSheetsDataFetcher {
                         nacionalidad: nationality,
                         booking_id: bookingId
                     });
-                    
+
                     return {
                         id: bookingId || `sale-${rowNumber}-${Date.now()}`,
                         product,
-                        date: date.toISOString(),
+                        // dateChile is fecha_venta adjusted to UTC-3, so getUTCHours() = Chile hour
+                        date: dateChile ? dateChile.toISOString() : `${fechaChile}T12:00:00.000Z`,
                         amount,
                         currency,
                         operator,
                         client,
                         nationality,
-                        timestamp: date.getTime()
+                        timestamp: dateChile ? dateChile.getTime() : Date.now()
                     };
                 }
             }

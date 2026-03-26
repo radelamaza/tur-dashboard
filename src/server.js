@@ -88,10 +88,10 @@ async function calculateAnalytics(salesData) {
         .slice(0, 10)
         .map(([product, stats]) => ({ product, count: stats.count, revenue: Math.round(stats.revenue) }));
 
-    // Sales by hour (today)
+    // Sales by hour (today) — sale.date is already adjusted to Chile time, use getUTCHours()
     const salesByHour = Array(24).fill(0);
     todaySales.forEach(sale => {
-        const hour = new Date(sale.date).getHours();
+        const hour = new Date(sale.date).getUTCHours();
         salesByHour[hour]++;
     });
 
@@ -162,11 +162,9 @@ async function updateSalesData() {
         ]);
         if (kpisRecord) cachedRecord = kpisRecord;
         
-        // Filter only today's data (Chilean timezone)
+        // Filter only today's data (fecha column is already in Chile timezone)
         const todayData = newData.filter(sale => {
-            const saleDate = new Date(sale.date);
-            const saleDateChile = new Date(saleDate.getTime() - (3 * 60 * 60 * 1000));
-            const saleDateStr = saleDateChile.toISOString().split('T')[0];
+            const saleDateStr = sale.date.split('T')[0];
             return saleDateStr === today;
         });
         
