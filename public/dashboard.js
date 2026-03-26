@@ -69,9 +69,9 @@ function updateDashboard(data) {
     el.totalSales.textContent = '$' + analytics.today.revenue.toLocaleString();
     el.countriesCount.textContent = analytics.salesByCountry ? analytics.salesByCountry.length : 0;
 
-    if (analytics.records && analytics.records.daily_sales) {
-        el.recordSales.textContent = analytics.records.daily_sales.record_value;
-        el.recordDate.textContent = new Date(analytics.records.daily_sales.record_date).toLocaleDateString();
+    if (analytics.record) {
+        el.recordSales.textContent = '$' + Math.round(analytics.record.ventas_dia_clp).toLocaleString('es-CL');
+        el.recordDate.textContent = analytics.record.fecha + ' (' + analytics.record.cantidad_ventas + ' ventas)';
     }
 
     updateSalesByHourChart(analytics.salesByHour);

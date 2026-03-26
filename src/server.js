@@ -37,6 +37,7 @@ const sheetCleaner = new SheetCleaner(SHEETS_ID);
 let currentSalesData = [];
 let lastUpdateTime = null;
 let lastProcessedDate = null;
+let cachedRecord = null; // Cache del récord de kpis diarios
 
 // Get today's date in Chilean timezone
 function getTodayDateStr() {
@@ -59,7 +60,6 @@ async function calculateAnalytics(salesData) {
     });
 
     // Get historical data from database
-    const historicalData = await database.getHistoricalData();
     const salesByCountry = await database.getSalesByCountry(todaySales);
 
     // Calculate totals in CLP (only today) - no conversion needed
@@ -140,8 +140,7 @@ async function calculateAnalytics(salesData) {
         salesByCountry,
         salesByNationality,
         recentSales: salesData.slice(-10).reverse(),
-        records: historicalData.records, // New: historical records
-        lastBestDay: historicalData.records.daily_sales || null, // New: best sales day
+        record: cachedRecord,
         lastUpdate: lastUpdateTime
     };
 }
@@ -157,7 +156,11 @@ async function updateSalesData() {
         }
         
         console.log('Fetching sales data...');
-        const newData = await dataFetcher.fetchData();
+        const [newData, kpisRecord] = await Promise.all([
+            dataFetcher.fetchData(),
+            dataFetcher.fetchKpisDiarios()
+        ]);
+        if (kpisRecord) cachedRecord = kpisRecord;
         
         // Filter only today's data (Chilean timezone)
         const todayData = newData.filter(sale => {

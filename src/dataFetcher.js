@@ -5,14 +5,14 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 class GoogleSheetsDataFetcher {
     constructor(sheetId) {
         this.sheetId = sheetId;
-        // Try alternative URL format that works better for public sheets
         this.csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`;
+        this.kpisCsvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=755669819`;
     }
 
     async fetchData() {
         try {
             console.log('🔗 Intentando conectar a:', this.csvUrl);
-            const csvData = await this.fetchCSV();
+            const csvData = await this.fetchCSV(this.csvUrl);
             const parsedData = this.parseCSV(csvData);
             const salesData = this.processSalesData(parsedData);
             return salesData;
@@ -22,9 +22,40 @@ class GoogleSheetsDataFetcher {
         }
     }
 
-    async fetchCSV() {
+    async fetchKpisDiarios() {
         try {
-            const response = await fetch(this.csvUrl, {
+            const csvData = await this.fetchCSV(this.kpisCsvUrl);
+            const parsed = Papa.parse(csvData, {
+                header: true,
+                skipEmptyLines: true,
+                transformHeader: (h) => h.trim()
+            });
+
+            let bestDay = null;
+            let bestAmount = 0;
+
+            parsed.data.forEach(row => {
+                const amount = parseFloat((row.ventas_dia_clp || '0').toString().replace(/\./g, '').replace(',', '.'));
+                const count = parseInt(row.cantidad_ventas) || 0;
+                const fecha = row.fecha ? row.fecha.trim() : null;
+
+                if (fecha && amount > bestAmount) {
+                    bestAmount = amount;
+                    bestDay = { fecha, ventas_dia_clp: Math.round(amount), cantidad_ventas: count };
+                }
+            });
+
+            console.log('🏆 Récord kpis diarios:', bestDay);
+            return bestDay;
+        } catch (error) {
+            console.error('Error obteniendo kpis diarios:', error);
+            return null;
+        }
+    }
+
+    async fetchCSV(url = this.csvUrl) {
+        try {
+            const response = await fetch(url, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
                 },
