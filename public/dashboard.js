@@ -107,6 +107,7 @@ function updateSalesByHourChart(data) {
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
                 x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
@@ -192,6 +193,7 @@ function updateOperatorsChart(data) {
         options: {
             indexAxis: 'y',
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
                 x: {

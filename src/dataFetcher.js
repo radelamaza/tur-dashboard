@@ -160,9 +160,8 @@ class GoogleSheetsDataFetcher {
             // Map the actual columns from your sheet:
             // timestamp_slack, raw_message, booking_id, actividad, fecha_venta, status, monto, Moneda, Peso, operador, nacionalidad, tipo_cambio, monto_clp
             
-            // fecha_venta (UTC from Slack) → adjust to Chile time (UTC-3) for correct hours
+            // fecha_venta (UTC from Slack) — stored as-is so browser auto-converts to local time
             const utcDate = row.fecha_venta ? new Date(row.fecha_venta) : null;
-            const dateChile = utcDate ? new Date(utcDate.getTime() - (3 * 60 * 60 * 1000)) : null;
 
             // fecha column has the correct Chile date (used only for day comparison)
             const fechaChile = (row.fecha || '').trim().split('T')[0].split(' ')[0];
@@ -204,14 +203,15 @@ class GoogleSheetsDataFetcher {
                     return {
                         id: bookingId || `sale-${rowNumber}-${Date.now()}`,
                         product,
-                        // dateChile is fecha_venta adjusted to UTC-3, so getUTCHours() = Chile hour
-                        date: dateChile ? dateChile.toISOString() : `${fechaChile}T12:00:00.000Z`,
+                        // UTC date — browser converts to local Chile time automatically
+                        date: utcDate ? utcDate.toISOString() : `${fechaChile}T12:00:00.000Z`,
+                        fechaChile, // Chile date for server-side day filtering
                         amount,
                         currency,
                         operator,
                         client,
                         nationality,
-                        timestamp: dateChile ? dateChile.getTime() : Date.now()
+                        timestamp: utcDate ? utcDate.getTime() : Date.now()
                     };
                 }
             }

@@ -224,12 +224,19 @@
 
         .notification.show { opacity: 1; transform: translateY(0); }
 
+        .chart-wrapper {
+            position: relative;
+            height: 220px;
+            width: 100%;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 20px 16px; }
             .charts-grid { grid-template-columns: 1fr; }
             .big-values { grid-template-columns: repeat(2, 1fr); }
             .big-value-number { font-size: 1.5rem; }
             .header { padding: 12px 16px; }
+            .chart-wrapper { height: 180px; }
         }
     </style>
 </head>
@@ -273,11 +280,15 @@
             <div class="charts-grid">
                 <div class="chart-card">
                     <div class="chart-card-title">Ventas por Hora</div>
-                    <canvas id="salesByHourChart" height="200"></canvas>
+                    <div class="chart-wrapper">
+                        <canvas id="salesByHourChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <div class="chart-card-title">Top Operadores (CLP)</div>
-                    <canvas id="operatorsChart" height="200"></canvas>
+                    <div class="chart-wrapper">
+                        <canvas id="operatorsChart"></canvas>
+                    </div>
                 </div>
             </div>
 
