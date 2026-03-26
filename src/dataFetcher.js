@@ -182,15 +182,20 @@ class GoogleSheetsDataFetcher {
             const utcDate = row.fecha_venta ? new Date(row.fecha_venta) : null;
 
             // fecha column has the correct Chile date (used only for day comparison)
-            // Fallback: if row.fecha is empty, compute from utcDate adjusted to Chile (UTC-3)
+            // Normalize to YYYY-MM-DD (sheet uses DD/MM/YYYY)
             let fechaChile = (row.fecha || '').trim().split('T')[0].split(' ')[0];
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaChile)) {
+                const [dd, mm, yyyy] = fechaChile.split('/');
+                fechaChile = `${yyyy}-${mm}-${dd}`;
+            }
+            // Fallback: if still empty/unrecognized, compute from utcDate adjusted to Chile (UTC-3)
             if (!fechaChile && utcDate) {
                 const chileDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
                 fechaChile = chileDate.toISOString().split('T')[0];
             }
 
             const product = row.actividad || 'Servicio de Tour';
-            const amount = parseFloat(row.monto_clp) || 0; // Use monto_clp (already in CLP)
+            const amount = parseFloat((row.monto_clp || '0').replace(/\./g, '').replace(',', '.')) || 0; // Use monto_clp (already in CLP)
             const currency = 'CLP'; // Always CLP since monto_clp is in pesos
             const operator = row.operador || 'Unknown';
             const nationality = row.nacionalidad || 'XX';
