@@ -152,7 +152,7 @@ function updateCountryTable(data) {
 
     let html = `<table class="sales-table">
         <thead><tr>
-            <th>País</th>
+            <th>Nacionalidad</th>
             <th style="text-align:right">Transacciones</th>
             <th style="text-align:right">Ingresos (CLP)</th>
         </tr></thead><tbody>`;
@@ -218,7 +218,7 @@ function updateRecentSales(sales) {
             <th>Producto</th>
             <th>Operador</th>
             <th>Cliente</th>
-            <th>País</th>
+            <th>Nacionalidad</th>
             <th>Hora</th>
             <th style="text-align:right">Monto</th>
         </tr></thead><tbody>`;

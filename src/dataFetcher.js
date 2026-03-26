@@ -164,7 +164,12 @@ class GoogleSheetsDataFetcher {
             const utcDate = row.fecha_venta ? new Date(row.fecha_venta) : null;
 
             // fecha column has the correct Chile date (used only for day comparison)
-            const fechaChile = (row.fecha || '').trim().split('T')[0].split(' ')[0];
+            // Fallback: if row.fecha is empty, compute from utcDate adjusted to Chile (UTC-3)
+            let fechaChile = (row.fecha || '').trim().split('T')[0].split(' ')[0];
+            if (!fechaChile && utcDate) {
+                const chileDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
+                fechaChile = chileDate.toISOString().split('T')[0];
+            }
 
             const product = row.actividad || 'Servicio de Tour';
             const amount = parseFloat(row.monto_clp) || 0; // Use monto_clp (already in CLP)

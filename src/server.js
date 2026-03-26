@@ -50,14 +50,10 @@ function getTodayDateStr() {
 // Analytics calculations (only today's data)
 async function calculateAnalytics(salesData) {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getTodayDateStr(); // Chile timezone (UTC-3)
 
-    // All sales data should already be from today only
-    const todaySales = salesData.filter(sale => {
-        const saleDate = new Date(sale.date);
-        return saleDate >= today;
-    });
+    // All sales data should already be from today only (pre-filtered by fechaChile)
+    const todaySales = salesData.filter(sale => sale.fechaChile === todayStr);
 
     // Get historical data from database
     const salesByCountry = await database.getSalesByCountry(todaySales);
