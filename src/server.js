@@ -44,6 +44,15 @@ const { authRouter, adminRouter, requireAuth, requireAdmin } = setupAuth(userDb,
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 
+// Setup route — solo funciona si el admin no tiene contraseña aún
+app.get('/setup', async (req, res) => {
+    const admin = await userDb.getUserByEmail(ADMIN_EMAIL);
+    if (admin && admin.password_hash) return res.redirect('/login.html');
+    const token = await userDb.ensureAdminExists(ADMIN_EMAIL);
+    if (token) return res.redirect(`/set-password.html?token=${token}`);
+    res.redirect('/login.html');
+});
+
 // Protect static dashboard — redirect to login if not authenticated
 app.get('/', (req, res, next) => {
     if (!req.session || !req.session.userId) return res.redirect('/login.html');
