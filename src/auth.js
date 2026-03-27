@@ -17,6 +17,7 @@ function setupAuth(userDb, appUrl) {
         connectionTimeout: 5000,
         greetingTimeout: 5000,
         socketTimeout: 5000,
+        family: 4,
     });
 
     async function sendSetPasswordEmail(toEmail, token) {
