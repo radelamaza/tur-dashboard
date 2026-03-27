@@ -135,15 +135,28 @@ function setupAuth(userDb, appUrl) {
             const { email } = req.body;
             if (!email) return res.status(400).json({ error: 'Email requerido' });
 
-            const existing = await userDb.getUserByEmail(email);
-            if (existing) return res.status(409).json({ error: 'El email ya existe' });
+            let user = await userDb.getUserByEmail(email);
+            let userId;
 
-            const userId = await userDb.createUser(email, 'viewer');
+            if (user) {
+                // User exists — only allow resend if they haven't set a password yet
+                if (user.password_hash) return res.status(409).json({ error: 'Este email ya tiene una cuenta activa' });
+                userId = user.id;
+            } else {
+                userId = await userDb.createUser(email, 'viewer');
+            }
+
             const token = await userDb.createPasswordToken(userId);
 
-            await sendSetPasswordEmail(email, token);
-
-            res.json({ ok: true, message: `Invitación enviada a ${email}` });
+            try {
+                await sendSetPasswordEmail(email, token);
+                res.json({ ok: true, message: `Invitación enviada a ${email}` });
+            } catch (emailErr) {
+                console.error('Email send error:', emailErr.message);
+                res.status(500).json({
+                    error: `Usuario creado pero falló el envío del email: ${emailErr.message}. Usa "Reenviar" desde la lista de usuarios.`
+                });
+            }
         } catch (err) {
             console.error('Create user error:', err);
             res.status(500).json({ error: 'Error creando usuario: ' + err.message });
@@ -178,7 +191,17 @@ function setupAuth(userDb, appUrl) {
             res.json({ ok: true, message: `Invitación reenviada a ${user.email}` });
         } catch (err) {
             console.error('Resend invite error:', err);
-            res.status(500).json({ error: 'Error reenviando invitación' });
+            res.status(500).json({ error: 'Error reenviando invitación: ' + err.message });
+        }
+    });
+
+    // GET /api/admin/test-email — verifica config SMTP
+    adminRouter.get('/test-email', requireAuth, requireAdmin, async (req, res) => {
+        try {
+            await transporter.verify();
+            res.json({ ok: true, message: 'Conexión SMTP OK' });
+        } catch (err) {
+            res.status(500).json({ ok: false, error: err.message });
         }
     });
 
