@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administración — Tur.com</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #09090b;
+            --bg-card: #18181b;
+            --bg-hover: #27272a;
+            --border: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --blue-500: #3b82f6;
+            --green-500: #22c55e;
+            --red-500: #ef4444;
+            --yellow-500: #eab308;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+        .header {
+            background: #0d0d10;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .header-left img { height: 40px; }
+        .header-left a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header-left a:hover { color: var(--text-primary); }
+        .btn-logout {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-logout:hover { border-color: var(--red-500); color: var(--red-500); }
+        .container { max-width: 860px; margin: 0 auto; padding: 40px 24px; }
+        h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+        .subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 40px; }
+        .section { margin-bottom: 40px; }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-title { font-size: 1rem; font-weight: 600; }
+        /* Invite form */
+        .invite-form {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+        .invite-form .field { flex: 1; }
+        .invite-form label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .invite-form input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 14px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .invite-form input:focus { border-color: var(--blue-500); }
+        .btn-invite {
+            background: var(--blue-500);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 9px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .btn-invite:hover { background: #2563eb; }
+        .btn-invite:disabled { opacity: 0.6; cursor: not-allowed; }
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.25s ease;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+        .toast.success { background: var(--bg-card); border: 1px solid var(--green-500); color: var(--green-500); }
+        .toast.error { background: var(--bg-card); border: 1px solid var(--red-500); color: var(--red-500); }
+        /* Users table */
+        .users-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .user-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+        .user-row:last-child { border-bottom: none; }
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        .user-info { flex: 1; min-width: 0; }
+        .user-email { font-size: 0.9rem; font-weight: 500; color: var(--text-primary); }
+        .user-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+        .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .badge-admin { background: rgba(59,130,246,0.15); color: var(--blue-500); }
+        .badge-viewer { background: var(--bg-hover); color: var(--text-muted); }
+        .badge-pending { background: rgba(234,179,8,0.15); color: var(--yellow-500); }
+        .user-actions { display: flex; gap: 8px; }
+        .btn-action {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-action:hover { border-color: var(--blue-500); color: var(--blue-500); }
+        .btn-action.danger:hover { border-color: var(--red-500); color: var(--red-500); }
+        .empty { padding: 32px; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+        .loading { padding: 32px; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <img src="/logo.svg" alt="Tur.com">
+            <a href="/">&#8592; Volver al dashboard</a>
+        </div>
+        <button class="btn-logout" id="logoutBtn">Cerrar sesión</button>
+    </div>
+
+    <div class="container">
+        <h1>Administración de accesos</h1>
+        <p class="subtitle">Gestiona quién puede ver el dashboard de ventas.</p>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">Invitar nuevo usuario</div>
+            </div>
+            <div class="invite-form">
+                <div class="field">
+                    <label>Email del usuario</label>
+                    <input type="email" id="inviteEmail" placeholder="nombre@tur.com">
+                </div>
+                <button class="btn-invite" id="inviteBtn">Enviar invitación</button>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">Usuarios con acceso</div>
+            </div>
+            <div class="users-card" id="usersContainer">
+                <div class="loading">Cargando usuarios...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast ${type} show`;
+            setTimeout(() => { t.className = `toast ${type}`; }, 3500);
+        }
+
+        async function loadUsers() {
+            const container = document.getElementById('usersContainer');
+            try {
+                const res = await fetch('/api/admin/users');
+                if (res.status === 403 || res.status === 401) {
+                    window.location.href = '/';
+                    return;
+                }
+                const users = await res.json();
+                if (!users.length) {
+                    container.innerHTML = '<div class="empty">No hay otros usuarios.</div>';
+                    return;
+                }
+                container.innerHTML = users.map(u => {
+                    const initials = u.email.substring(0, 2).toUpperCase();
+                    const hasPwd = u.has_password === 1;
+                    const isAdmin = u.role === 'admin';
+                    const badgeClass = isAdmin ? 'badge-admin' : (hasPwd ? 'badge-viewer' : 'badge-pending');
+                    const badgeText = isAdmin ? 'Admin' : (hasPwd ? 'Activo' : 'Pendiente');
+                    const date = new Date(u.created_at).toLocaleDateString('es-CL');
+                    const actions = isAdmin ? '' : `
+                        ${!hasPwd ? `<button class="btn-action" onclick="resendInvite(${u.id}, '${u.email}')">Reenviar</button>` : ''}
+                        <button class="btn-action danger" onclick="deleteUser(${u.id}, '${u.email}')">Eliminar</button>
+                    `;
+                    return `
+                        <div class="user-row" id="user-${u.id}">
+                            <div class="user-avatar">${initials}</div>
+                            <div class="user-info">
+                                <div class="user-email">${u.email}</div>
+                                <div class="user-meta">Desde ${date}</div>
+                            </div>
+                            <span class="badge ${badgeClass}">${badgeText}</span>
+                            <div class="user-actions">${actions}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch {
+                container.innerHTML = '<div class="empty">Error cargando usuarios.</div>';
+            }
+        }
+
+        document.getElementById('inviteBtn').addEventListener('click', async () => {
+            const email = document.getElementById('inviteEmail').value.trim();
+            if (!email) return;
+            const btn = document.getElementById('inviteBtn');
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+            try {
+                const res = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(data.message, 'success');
+                    document.getElementById('inviteEmail').value = '';
+                    loadUsers();
+                } else {
+                    showToast(data.error || 'Error al invitar', 'error');
+                }
+            } catch {
+                showToast('Error de conexión', 'error');
+            }
+            btn.disabled = false;
+            btn.textContent = 'Enviar invitación';
+        });
+
+        document.getElementById('inviteEmail').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('inviteBtn').click();
+        });
+
+        async function deleteUser(id, email) {
+            if (!confirm(`¿Eliminar acceso de ${email}?`)) return;
+            try {
+                const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast(`Acceso de ${email} eliminado`, 'success');
+                    document.getElementById(`user-${id}`)?.remove();
+                } else {
+                    showToast(data.error || 'Error al eliminar', 'error');
+                }
+            } catch {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        async function resendInvite(id, email) {
+            try {
+                const res = await fetch(`/api/admin/users/${id}/resend-invite`, { method: 'POST' });
+                const data = await res.json();
+                if (res.ok) showToast(`Invitación reenviada a ${email}`, 'success');
+                else showToast(data.error || 'Error', 'error');
+            } catch {
+                showToast('Error de conexión', 'error');
+            }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        loadUsers();
+    </script>
+</body>
+</html>

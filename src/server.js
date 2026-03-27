@@ -4,11 +4,14 @@ const socketIo = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const fs = require('fs');
+const session = require('express-session');
 require('dotenv').config();
 
 const GoogleSheetsDataFetcher = require('./dataFetcher');
 const Database = require('./database');
 const SheetCleaner = require('./sheetCleaner');
+const UserDatabase = require('./userDatabase');
+const setupAuth = require('./auth');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,17 +24,53 @@ const io = socketIo(server, {
 
 const PORT = process.env.PORT || 3000;
 const SHEETS_ID = process.env.GOOGLE_SHEETS_ID || '1q1WjPguhUlfct_duJA3gOOrSWuF-g67YlTieay8NtPs';
-const REFRESH_INTERVAL = (process.env.DATA_REFRESH_INTERVAL || 5) * 60 * 1000; // Convert to milliseconds
+const REFRESH_INTERVAL = (process.env.DATA_REFRESH_INTERVAL || 5) * 60 * 1000;
+const APP_URL = process.env.APP_URL || `http://localhost:${PORT}`;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'rdelamaza@tur.com';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'tur-dashboard-secret-change-me',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false, httpOnly: true, maxAge: 8 * 60 * 60 * 1000 } // 8h
+}));
+
+// Auth setup
+const userDb = new UserDatabase();
+const { authRouter, adminRouter, requireAuth, requireAdmin } = setupAuth(userDb, APP_URL);
+app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
+
+// Protect static dashboard — redirect to login if not authenticated
+app.get('/', (req, res, next) => {
+    if (!req.session || !req.session.userId) return res.redirect('/login.html');
+    next();
+});
+app.get('/admin.html', (req, res, next) => {
+    if (!req.session || !req.session.userId) return res.redirect('/login.html');
+    if (req.session.role !== 'admin') return res.redirect('/');
+    next();
+});
+
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Initialize services
 const dataFetcher = new GoogleSheetsDataFetcher(SHEETS_ID);
 const database = new Database();
 const sheetCleaner = new SheetCleaner(SHEETS_ID);
+
+// Ensure admin user exists on startup
+userDb.ensureAdminExists(ADMIN_EMAIL).then(token => {
+    if (token) {
+        console.log('\n========================================');
+        console.log('🔐 SETUP ADMIN: Visita este link para crear tu contraseña:');
+        console.log(`   ${APP_URL}/set-password.html?token=${token}`);
+        console.log('========================================\n');
+    }
+}).catch(err => console.error('Error initializing admin:', err));
 
 // Store current sales data (only today's data)
 let currentSalesData = [];
@@ -252,11 +291,7 @@ async function handleEndOfDay() {
 }
 
 // Routes
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public/index.html'));
-});
-
-app.get('/api/sales', async (req, res) => {
+app.get('/api/sales', requireAuth, async (req, res) => {
     try {
         if (currentSalesData.length === 0) {
             await updateSalesData();
@@ -275,7 +310,7 @@ app.get('/api/sales', async (req, res) => {
 });
 
 // Debug endpoint — shows raw sheet rows 90+ and today's filter value
-app.get('/api/debug', async (req, res) => {
+app.get('/api/debug', requireAuth, requireAdmin, async (req, res) => {
     try {
         const rawData = await dataFetcher.fetchRawRows();
         const today = getTodayDateStr();
@@ -286,7 +321,7 @@ app.get('/api/debug', async (req, res) => {
 });
 
 // New endpoint for historical records
-app.get('/api/records', async (req, res) => {
+app.get('/api/records', requireAuth, async (req, res) => {
     try {
         const historicalData = await database.getHistoricalData();
         res.json(historicalData);

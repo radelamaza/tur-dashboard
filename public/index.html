@@ -67,6 +67,34 @@
         .header-status.online { background: rgba(34,197,94,0.15); color: var(--green-500); }
         .header-status.offline { background: rgba(239,68,68,0.15); color: var(--red-500); }
 
+        .header-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-admin {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 5px 13px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+            display: none;
+        }
+        .btn-admin:hover { border-color: var(--blue-500); color: var(--blue-500); }
+        .btn-logout {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 5px 13px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-logout:hover { border-color: #ef4444; color: #ef4444; }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -245,8 +273,12 @@
         <div class="header-left">
             <img src="/logo.svg" alt="Tur.com" height="40">
         </div>
-        <div id="status" class="header-status online">
-            <span id="statusText">Conectando...</span>
+        <div class="header-actions">
+            <div id="status" class="header-status online">
+                <span id="statusText">Conectando...</span>
+            </div>
+            <a href="/admin.html" class="btn-admin" id="adminBtn">Admin</a>
+            <button class="btn-logout" id="logoutBtn">Salir</button>
         </div>
     </div>
 
@@ -318,6 +350,19 @@
         <span id="notificationText"></span>
     </div>
 
+    <script>
+        // Show admin button if user is admin, handle logout
+        fetch('/api/auth/me').then(r => r.json()).then(data => {
+            if (data.role === 'admin') {
+                document.getElementById('adminBtn').style.display = 'inline-block';
+            }
+        }).catch(() => {});
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+    </script>
     <script src="dashboard.js"></script>
 </body>
 </html>
