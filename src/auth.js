@@ -159,8 +159,8 @@ function setupAuth(userDb, appUrl) {
 
             res.json({
                 ok: true,
-                message: emailSent ? `Invitación enviada a ${email}` : `Usuario creado. El email falló — comparte el link manualmente.`,
-                inviteLink: emailSent ? null : inviteLink,
+                message: `Usuario creado. Copia el link y compártelo con ${email}.`,
+                inviteLink,
                 emailSent
             });
         } catch (err) {
@@ -204,8 +204,8 @@ function setupAuth(userDb, appUrl) {
 
             res.json({
                 ok: true,
-                message: emailSent ? `Invitación reenviada a ${user.email}` : `Email falló — comparte el link manualmente.`,
-                inviteLink: emailSent ? null : inviteLink,
+                message: `Link generado. Compártelo con ${user.email}.`,
+                inviteLink,
                 emailSent
             });
         } catch (err) {
