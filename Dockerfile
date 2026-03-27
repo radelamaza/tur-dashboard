@@ -13,13 +13,8 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
-# Create user for security
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
-
-# Create data directory and set ownership
-RUN mkdir -p /app/data && chown -R nodejs:nodejs /app
-USER nodejs
+# Create data directory
+RUN mkdir -p /app/data
 
 # Expose port
 EXPOSE 3000
