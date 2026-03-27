@@ -147,16 +147,22 @@ function setupAuth(userDb, appUrl) {
             }
 
             const token = await userDb.createPasswordToken(userId);
+            const inviteLink = `${appUrl}/set-password.html?token=${token}`;
 
+            let emailSent = false;
             try {
                 await sendSetPasswordEmail(email, token);
-                res.json({ ok: true, message: `Invitación enviada a ${email}` });
+                emailSent = true;
             } catch (emailErr) {
                 console.error('Email send error:', emailErr.message);
-                res.status(500).json({
-                    error: `Usuario creado pero falló el envío del email: ${emailErr.message}. Usa "Reenviar" desde la lista de usuarios.`
-                });
             }
+
+            res.json({
+                ok: true,
+                message: emailSent ? `Invitación enviada a ${email}` : `Usuario creado. El email falló — comparte el link manualmente.`,
+                inviteLink: emailSent ? null : inviteLink,
+                emailSent
+            });
         } catch (err) {
             console.error('Create user error:', err);
             res.status(500).json({ error: 'Error creando usuario: ' + err.message });
@@ -186,9 +192,22 @@ function setupAuth(userDb, appUrl) {
             if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
 
             const token = await userDb.createPasswordToken(id);
-            await sendSetPasswordEmail(user.email, token);
+            const inviteLink = `${appUrl}/set-password.html?token=${token}`;
 
-            res.json({ ok: true, message: `Invitación reenviada a ${user.email}` });
+            let emailSent = false;
+            try {
+                await sendSetPasswordEmail(user.email, token);
+                emailSent = true;
+            } catch (emailErr) {
+                console.error('Resend invite error:', emailErr.message);
+            }
+
+            res.json({
+                ok: true,
+                message: emailSent ? `Invitación reenviada a ${user.email}` : `Email falló — comparte el link manualmente.`,
+                inviteLink: emailSent ? null : inviteLink,
+                emailSent
+            });
         } catch (err) {
             console.error('Resend invite error:', err);
             res.status(500).json({ error: 'Error reenviando invitación: ' + err.message });
