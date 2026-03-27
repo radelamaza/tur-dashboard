@@ -1,10 +1,15 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const crypto = require('crypto');
+const fs = require('fs');
 
 class UserDatabase {
     constructor(dbPath = './sales_history.db') {
-        this.db = new sqlite3.Database(dbPath);
+        const resolvedPath = path.resolve(dbPath);
+        fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+        this.db = new sqlite3.Database(resolvedPath, (err) => {
+            if (err) console.error('Error opening user database:', err);
+        });
         this.ready = this.init();
     }
 

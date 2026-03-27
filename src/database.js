@@ -1,9 +1,12 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
 class Database {
     constructor(dbPath = './sales_history.db') {
-        this.dbPath = dbPath;
+        const resolvedPath = path.resolve(dbPath);
+        fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+        this.dbPath = resolvedPath;
         this.db = null;
         this.init();
     }

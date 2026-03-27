@@ -17,8 +17,8 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
+# Create data directory and set ownership
+RUN mkdir -p /app/data && chown -R nodejs:nodejs /app
 USER nodejs
 
 # Expose port
