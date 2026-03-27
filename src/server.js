@@ -39,7 +39,7 @@ app.use(session({
 }));
 
 // Auth setup
-const userDb = new UserDatabase();
+const userDb = new UserDatabase(process.env.DB_PATH || './sales_history.db');
 const { authRouter, adminRouter, requireAuth, requireAdmin } = setupAuth(userDb, APP_URL);
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
@@ -67,8 +67,9 @@ app.get('/admin.html', (req, res, next) => {
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Initialize services
+const DB_PATH = process.env.DB_PATH || './sales_history.db';
 const dataFetcher = new GoogleSheetsDataFetcher(SHEETS_ID);
-const database = new Database();
+const database = new Database(DB_PATH);
 const sheetCleaner = new SheetCleaner(SHEETS_ID);
 
 // Ensure admin user exists on startup
