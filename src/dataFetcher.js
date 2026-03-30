@@ -195,7 +195,7 @@ class GoogleSheetsDataFetcher {
             }
 
             const product = row.actividad || 'Servicio de Tour';
-            const amount = parseFloat((row.monto_clp || '0').replace(/\./g, '').replace(',', '.')) || 0; // Use monto_clp (already in CLP)
+            const amount = parseFloat((row.monto_clp || '0').replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.')) || 0; // Use monto_clp (already in CLP)
             const currency = 'CLP'; // Always CLP since monto_clp is in pesos
             const operator = row.operador || 'Unknown';
             const nationality = row.nacionalidad || 'XX';
