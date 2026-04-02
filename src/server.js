@@ -339,6 +339,37 @@ app.get('/api/records', requireAuth, async (req, res) => {
     }
 });
 
+// Admin: backfill daily_summaries from the full Google Sheet history
+app.post('/api/admin/backfill', requireAuth, requireAdmin, async (req, res) => {
+    try {
+        console.log('🔄 Starting backfill from Google Sheets...');
+        const allSales = await dataFetcher.fetchAllData();
+
+        // Group sales by fechaChile
+        const byDate = {};
+        allSales.forEach(sale => {
+            if (!byDate[sale.fechaChile]) byDate[sale.fechaChile] = [];
+            byDate[sale.fechaChile].push(sale);
+        });
+
+        const dates = Object.keys(byDate).sort();
+        const results = [];
+
+        for (const date of dates) {
+            const salesForDate = byDate[date];
+            const analytics = await calculateAnalytics(salesForDate, date);
+            await database.saveDailySummary(date, analytics);
+            results.push({ date, sales: analytics.today.sales, revenue: analytics.today.revenue });
+            console.log(`✅ Backfilled ${date}: ${analytics.today.sales} ventas, $${analytics.today.revenue}`);
+        }
+
+        res.json({ ok: true, datesProcessed: results });
+    } catch (error) {
+        console.error('Backfill error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Historical: list dates that have data
 app.get('/api/history/dates', requireAuth, async (req, res) => {
     try {

@@ -146,18 +146,18 @@ class GoogleSheetsDataFetcher {
 
     processSalesData(rawData) {
         const sales = [];
-        
+
         console.log('🔍 Processing', rawData.length, 'rows from Google Sheets');
-        
+
         // Filter only rows from index 89+ (row 90+) and process them
         rawData.forEach((row, index) => {
             if (index >= 89) { // Starting from row 90
                 // Look for actual data in the row
                 const hasData = Object.values(row).some(value => value && value.toString().trim());
-                
+
                 if (hasData) {
                     console.log(`Processing row ${index + 1}:`, row);
-                    
+
                     // Try to extract sale info directly from the columns
                     const sale = this.extractSaleFromColumns(row, index + 1);
                     if (sale) {
@@ -167,8 +167,63 @@ class GoogleSheetsDataFetcher {
                 }
             }
         });
-        
+
         console.log('🏆 Total sales found:', sales.length);
+        return sales;
+    }
+
+    // Like fetchData but returns ALL sales regardless of date (for backfill)
+    async fetchAllData() {
+        const csvData = await this.fetchCSV(this.csvUrl);
+        const parsedData = this.parseCSV(csvData);
+        const sales = [];
+
+        parsedData.forEach((row, index) => {
+            if (index < 89) return;
+            const hasData = Object.values(row).some(v => v && v.toString().trim());
+            if (!hasData) return;
+
+            try {
+                const utcDate = row.fecha_venta ? new Date(row.fecha_venta) : null;
+
+                let fechaChile = (row.fecha || '').trim().split('T')[0].split(' ')[0];
+                if (/^\d{2}\/\d{2}\/\d{4}$/.test(fechaChile)) {
+                    const [dd, mm, yyyy] = fechaChile.split('/');
+                    fechaChile = `${yyyy}-${mm}-${dd}`;
+                }
+                if (!fechaChile && utcDate) {
+                    const chileDate = new Date(utcDate.getTime() - (3 * 60 * 60 * 1000));
+                    fechaChile = chileDate.toISOString().split('T')[0];
+                }
+
+                const amount = parseFloat((row.monto_clp || '0').replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+                const product = row.actividad || 'Servicio de Tour';
+
+                if (amount > 0 && product && fechaChile) {
+                    let client = 'Unknown';
+                    if (row.raw_message) {
+                        const m = row.raw_message.match(/Cliente:\s*([^\n\r]+)/);
+                        if (m) client = m[1].trim();
+                    }
+                    sales.push({
+                        id: row.booking_id || `sale-${index}-${Date.now()}`,
+                        product,
+                        date: utcDate ? utcDate.toISOString() : `${fechaChile}T12:00:00.000Z`,
+                        fechaChile,
+                        amount,
+                        currency: 'CLP',
+                        operator: row.operador || 'Unknown',
+                        client,
+                        nationality: row.nacionalidad || 'XX',
+                        timestamp: utcDate ? utcDate.getTime() : Date.now()
+                    });
+                }
+            } catch (e) {
+                console.error(`Error parsing row ${index + 1} in fetchAllData:`, e);
+            }
+        });
+
+        console.log(`📦 fetchAllData: ${sales.length} total sales across all dates`);
         return sales;
     }
 
