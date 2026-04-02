@@ -71,7 +71,8 @@ class Database {
         // Migrate: add columns for existing DBs that predate this schema
         const migrations = [
             'ALTER TABLE daily_summaries ADD COLUMN top_products TEXT',
-            'ALTER TABLE daily_summaries ADD COLUMN sales_by_nationality TEXT'
+            'ALTER TABLE daily_summaries ADD COLUMN sales_by_nationality TEXT',
+            'ALTER TABLE daily_summaries ADD COLUMN top_operators TEXT'
         ];
         for (const sql of migrations) {
             try { await this.run(sql, [], { silent: true }); } catch (e) { /* column already exists */ }
@@ -169,8 +170,8 @@ class Database {
             await this.run(`
                 INSERT OR REPLACE INTO daily_summaries
                 (date, total_sales, total_revenue_usd, avg_sale_usd, top_product, top_product_sales,
-                 total_by_country, sales_by_hour, currency_breakdown, top_products, sales_by_nationality)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 total_by_country, sales_by_hour, currency_breakdown, top_products, sales_by_nationality, top_operators)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 date,
                 today.sales,
@@ -182,7 +183,8 @@ class Database {
                 JSON.stringify(analytics.salesByHour),
                 JSON.stringify(analytics.salesByCurrency),
                 JSON.stringify(analytics.topProducts),
-                JSON.stringify(analytics.salesByNationality)
+                JSON.stringify(analytics.salesByNationality),
+                JSON.stringify(analytics.topOperators)
             ]);
 
             // Check and update records

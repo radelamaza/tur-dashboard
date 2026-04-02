@@ -431,7 +431,7 @@ app.get('/api/history/:date', requireAuth, async (req, res) => {
                 topProducts,
                 salesByHour,
                 salesByCurrency,
-                topOperators: [],
+                topOperators: row.top_operators ? JSON.parse(row.top_operators) : [],
                 salesByCountry,
                 salesByNationality,
                 recentSales: [],
