@@ -1,6 +1,7 @@
 const socket = io();
 
 let charts = { salesByHour: null, operators: null };
+let isHistoricalMode = false;
 
 const el = {
     status: document.getElementById('statusText'),
@@ -50,6 +51,7 @@ socket.on('disconnect', () => {
 });
 
 socket.on('salesUpdate', (data) => {
+    if (isHistoricalMode) return;
     updateDashboard(data);
     if (data.newSalesCount > 0) showNotification(`${data.newSalesCount} nueva(s) venta(s)`);
 });
@@ -75,13 +77,16 @@ function updateDashboard(data) {
     }
 
     updateSalesByHourChart(analytics.salesByHour);
-    updateOperatorsChart(analytics.topOperators);
+    updateOperatorsChart(analytics.topOperators || []);
     updateTopProductsTable(analytics.topProducts);
     updateCountryTable(analytics.salesByNationality || []);
     updateRecentSales(analytics.recentSales);
 
     if (analytics.lastUpdate) {
-        el.lastUpdate.textContent = 'Última actualización: ' + new Date(analytics.lastUpdate).toLocaleTimeString();
+        const d = new Date(analytics.lastUpdate);
+        el.lastUpdate.textContent = isHistoricalMode
+            ? 'Fecha: ' + d.toLocaleDateString('es-CL')
+            : 'Última actualización: ' + d.toLocaleTimeString();
     }
 }
 
@@ -171,7 +176,25 @@ function updateCountryTable(data) {
 
 function updateOperatorsChart(data) {
     const ctx = document.getElementById('operatorsChart').getContext('2d');
-    if (charts.operators) charts.operators.destroy();
+    if (charts.operators) { charts.operators.destroy(); charts.operators = null; }
+
+    if (!data || data.length === 0) {
+        ctx.canvas.style.display = 'none';
+        const wrapper = ctx.canvas.parentElement;
+        if (!wrapper.querySelector('.no-data-msg')) {
+            const msg = document.createElement('p');
+            msg.className = 'no-data-msg';
+            msg.style.cssText = 'text-align:center;color:#9ca3af;padding:24px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)';
+            msg.textContent = 'Sin datos disponibles';
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(msg);
+        }
+        return;
+    }
+
+    ctx.canvas.style.display = '';
+    const existing = ctx.canvas.parentElement.querySelector('.no-data-msg');
+    if (existing) existing.remove();
 
     const labels = data.map(item => {
         const op = item.operator || 'N/A';
@@ -245,8 +268,59 @@ function showNotification(message) {
     setTimeout(() => el.notification.classList.remove('show'), 3000);
 }
 
+// Populate date filter with available historical dates
+async function loadAvailableDates() {
+    try {
+        const dates = await fetch('/api/history/dates').then(r => r.json());
+        const select = document.getElementById('dateFilter');
+        dates.forEach(date => {
+            const opt = document.createElement('option');
+            opt.value = date;
+            // Parse date without timezone issues
+            const [year, month, day] = date.split('-').map(Number);
+            const d = new Date(year, month - 1, day);
+            opt.textContent = d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Error loading historical dates:', e);
+    }
+}
+
+// Handle date filter changes
+document.getElementById('dateFilter').addEventListener('change', async (e) => {
+    const value = e.target.value;
+    const todaySalesLabel = document.getElementById('todaySalesLabel');
+    const countriesSubLabel = document.getElementById('countriesSubLabel');
+
+    if (value === 'today') {
+        isHistoricalMode = false;
+        el.status.textContent = '● En vivo';
+        document.getElementById('status').className = 'header-status online';
+        todaySalesLabel.textContent = 'Ventas Hoy';
+        countriesSubLabel.textContent = 'con ventas hoy';
+        fetch('/api/sales')
+            .then(r => r.json())
+            .then(data => updateDashboard(data))
+            .catch(() => {});
+    } else {
+        isHistoricalMode = true;
+        el.status.textContent = '● Histórico';
+        document.getElementById('status').className = 'header-status historical';
+        todaySalesLabel.textContent = 'Ventas del Día';
+        countriesSubLabel.textContent = 'con ventas ese día';
+        try {
+            const data = await fetch(`/api/history/${value}`).then(r => r.json());
+            updateDashboard(data);
+        } catch (err) {
+            console.error('Error loading historical data:', err);
+        }
+    }
+});
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
+    loadAvailableDates();
     fetch('/api/sales')
         .then(r => r.json())
         .then(data => updateDashboard(data))

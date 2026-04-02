@@ -66,6 +66,21 @@
 
         .header-status.online { background: rgba(34,197,94,0.15); color: var(--green-500); }
         .header-status.offline { background: rgba(239,68,68,0.15); color: var(--red-500); }
+        .header-status.historical { background: rgba(234,179,8,0.15); color: var(--yellow-500); }
+
+        .date-filter {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        .date-filter:focus { outline: none; border-color: var(--blue-500); }
+        .date-filter option { background: var(--bg-card); }
 
         .header-actions { display: flex; align-items: center; gap: 10px; }
         .btn-admin {
@@ -274,6 +289,9 @@
             <img src="/logo.svg" alt="Tur.com" height="40">
         </div>
         <div class="header-actions">
+            <select id="dateFilter" class="date-filter">
+                <option value="today">Hoy (En vivo)</option>
+            </select>
             <div id="status" class="header-status online">
                 <span id="statusText">Conectando...</span>
             </div>
@@ -288,7 +306,7 @@
         <div id="dashboard" style="display: none;">
             <div class="big-values">
                 <div class="big-value">
-                    <div class="big-value-label">Ventas Hoy</div>
+                    <div class="big-value-label" id="todaySalesLabel">Ventas Hoy</div>
                     <div class="big-value-number" id="todaySales">0</div>
                     <div class="big-value-sub">transacciones</div>
                 </div>
@@ -305,7 +323,7 @@
                 <div class="big-value">
                     <div class="big-value-label">Países</div>
                     <div class="big-value-number" id="countriesCount">0</div>
-                    <div class="big-value-sub">con ventas hoy</div>
+                    <div class="big-value-sub" id="countriesSubLabel">con ventas hoy</div>
                 </div>
             </div>
 

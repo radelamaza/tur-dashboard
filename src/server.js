@@ -340,6 +340,80 @@ app.get('/api/records', requireAuth, async (req, res) => {
     }
 });
 
+// Historical: list dates that have data
+app.get('/api/history/dates', requireAuth, async (req, res) => {
+    try {
+        const rows = await database.getAvailableDates();
+        res.json(rows.map(r => r.date));
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching available dates' });
+    }
+});
+
+// Historical: analytics for a specific date
+app.get('/api/history/:date', requireAuth, async (req, res) => {
+    try {
+        const { date } = req.params;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ error: 'Formato de fecha inválido' });
+        }
+
+        const row = await database.getDailySummary(date);
+        if (!row) return res.status(404).json({ error: 'Sin datos para esta fecha' });
+
+        const salesByHour = JSON.parse(row.sales_by_hour || '[]');
+        const salesByCurrency = JSON.parse(row.currency_breakdown || '{}');
+
+        // topProducts: full array if available (new rows), fallback to single top product
+        let topProducts = [];
+        if (row.top_products) {
+            topProducts = JSON.parse(row.top_products);
+        } else if (row.top_product) {
+            topProducts = [{ product: row.top_product, count: row.top_product_sales, revenue: 0 }];
+        }
+
+        // salesByNationality: full array if available, fallback to counts from total_by_country
+        let salesByNationality = [];
+        if (row.sales_by_nationality) {
+            salesByNationality = JSON.parse(row.sales_by_nationality);
+        } else if (row.total_by_country) {
+            const countryData = JSON.parse(row.total_by_country);
+            salesByNationality = Object.entries(countryData)
+                .sort(([, a], [, b]) => b - a)
+                .map(([country, count]) => ({ country, count, revenue: 0 }));
+        }
+
+        // Enrich nationalities with coordinates for the map-style country list
+        const coordinates = await database.getCountryCoordinates();
+        const countryMap = coordinates.reduce((acc, c) => { acc[c.code] = c; return acc; }, {});
+        const salesByCountry = salesByNationality
+            .filter(n => countryMap[n.country])
+            .map(n => ({ ...countryMap[n.country], sales: n.count, revenue: n.revenue }));
+
+        res.json({
+            date,
+            analytics: {
+                today: {
+                    sales: row.total_sales,
+                    revenue: row.total_revenue_usd,
+                    avgSale: row.avg_sale_usd
+                },
+                topProducts,
+                salesByHour,
+                salesByCurrency,
+                topOperators: [],
+                salesByCountry,
+                salesByNationality,
+                recentSales: [],
+                record: null,
+                lastUpdate: row.created_at
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching historical data' });
+    }
+});
+
 // New endpoint for Google Apps Script
 app.get('/api/cleanup-script', (req, res) => {
     const script = sheetCleaner.generateGoogleAppsScript();

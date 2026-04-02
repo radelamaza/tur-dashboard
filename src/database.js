@@ -39,6 +39,8 @@ class Database {
                 total_by_country TEXT, -- JSON string
                 sales_by_hour TEXT, -- JSON string
                 currency_breakdown TEXT, -- JSON string
+                top_products TEXT, -- JSON string (full array)
+                sales_by_nationality TEXT, -- JSON string (full array)
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )`,
             
@@ -64,6 +66,15 @@ class Database {
 
         for (const sql of createTablesSQL) {
             await this.run(sql);
+        }
+
+        // Migrate: add columns for existing DBs that predate this schema
+        const migrations = [
+            'ALTER TABLE daily_summaries ADD COLUMN top_products TEXT',
+            'ALTER TABLE daily_summaries ADD COLUMN sales_by_nationality TEXT'
+        ];
+        for (const sql of migrations) {
+            try { await this.run(sql, [], { silent: true }); } catch (e) { /* column already exists */ }
         }
 
         // Insert Latin America countries data
@@ -100,11 +111,11 @@ class Database {
         }
     }
 
-    async run(sql, params = []) {
+    async run(sql, params = [], { silent = false } = {}) {
         return new Promise((resolve, reject) => {
             this.db.run(sql, params, function(err) {
                 if (err) {
-                    console.error('Database error:', err);
+                    if (!silent) console.error('Database error:', err);
                     reject(err);
                 } else {
                     resolve({ id: this.lastID, changes: this.changes });
@@ -142,11 +153,11 @@ class Database {
     // Save daily summary
     async saveDailySummary(date, analytics) {
         const { today } = analytics;
-        
+
         // Get top product
         const topProduct = analytics.topProducts[0] || { product: null, count: 0 };
-        
-        // Prepare country data
+
+        // Prepare country data (legacy column — kept for backwards compat)
         const countryData = {};
         analytics.recentSales.forEach(sale => {
             if (sale.nationality) {
@@ -156,10 +167,10 @@ class Database {
 
         try {
             await this.run(`
-                INSERT OR REPLACE INTO daily_summaries 
-                (date, total_sales, total_revenue_usd, avg_sale_usd, top_product, top_product_sales, 
-                 total_by_country, sales_by_hour, currency_breakdown)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT OR REPLACE INTO daily_summaries
+                (date, total_sales, total_revenue_usd, avg_sale_usd, top_product, top_product_sales,
+                 total_by_country, sales_by_hour, currency_breakdown, top_products, sales_by_nationality)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
                 date,
                 today.sales,
@@ -169,7 +180,9 @@ class Database {
                 topProduct.count,
                 JSON.stringify(countryData),
                 JSON.stringify(analytics.salesByHour),
-                JSON.stringify(analytics.salesByCurrency)
+                JSON.stringify(analytics.salesByCurrency),
+                JSON.stringify(analytics.topProducts),
+                JSON.stringify(analytics.salesByNationality)
             ]);
 
             // Check and update records
@@ -249,6 +262,16 @@ class Database {
         });
 
         return Object.values(countryStats);
+    }
+
+    // Get all dates that have a saved summary
+    async getAvailableDates() {
+        return await this.all('SELECT date FROM daily_summaries ORDER BY date DESC');
+    }
+
+    // Get saved summary for a specific date
+    async getDailySummary(date) {
+        return await this.get('SELECT * FROM daily_summaries WHERE date = ?', [date]);
     }
 
     close() {
