@@ -97,9 +97,9 @@ function getTodayDateStr() {
 }
 
 // Analytics calculations (only today's data)
-async function calculateAnalytics(salesData) {
+async function calculateAnalytics(salesData, dateStr = null) {
     const now = new Date();
-    const todayStr = getTodayDateStr(); // Chile timezone (UTC-3)
+    const todayStr = dateStr || getTodayDateStr(); // Chile timezone (UTC-3)
 
     // All sales data should already be from today only (pre-filtered by fechaChile)
     const todaySales = salesData.filter(sale => sale.fechaChile === todayStr);
@@ -268,18 +268,17 @@ function exportToCSV(sales) {
 // Handle end of day processing
 async function handleEndOfDay() {
     try {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        
-        if (currentSalesData.length > 0) {
-            // Calculate final analytics for the day
-            const finalAnalytics = await calculateAnalytics(currentSalesData);
-            
+        // Use lastProcessedDate: that's the actual date of the data in currentSalesData
+        const dateToSave = lastProcessedDate;
+
+        if (currentSalesData.length > 0 && dateToSave) {
+            // Pass dateToSave so calculateAnalytics filters correctly (not by today's date)
+            const finalAnalytics = await calculateAnalytics(currentSalesData, dateToSave);
+
             // Save to database
-            await database.saveDailySummary(yesterdayStr, finalAnalytics);
-            
-            console.log(`📊 End of day summary saved for ${yesterdayStr}`);
+            await database.saveDailySummary(dateToSave, finalAnalytics);
+
+            console.log(`📊 End of day summary saved for ${dateToSave}`);
         }
         
         // Clear current data for fresh start
